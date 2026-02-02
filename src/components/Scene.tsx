@@ -1,5 +1,6 @@
 'use client';
 
+// ... (imports remain the same)
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Environment, PerspectiveCamera, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
@@ -8,18 +9,33 @@ import { Vector3 } from 'three';
 import Tower from './Tower';
 
 import { getCompanyByMesh } from '../data/companies';
+import { useRouter } from 'next/navigation';
+
+// Hook to detect mobile screen
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  return isMobile;
+};
 
 // Animated Camera System with Scroll Navigation
 function CinematicCamera({
   targetPos,
   lookAtPos,
   isFocused,
-  isHovered
+  isHovered,
+  isMobile
 }: {
   targetPos: Vector3;
   lookAtPos: Vector3;
   isFocused: boolean;
   isHovered: boolean;
+  isMobile: boolean;
 }) {
   const { camera, gl } = useThree();
   const controlsRef = useRef<any>(null);
@@ -29,7 +45,8 @@ function CinematicCamera({
   const targetScrollY = useRef(10);
 
   // Camera state
-  const currentPos = useRef(new Vector3(110, 10, 110)); // Further back (Zoomed out)
+  const initialRadius = isMobile ? 150 : 110; // Zoom out more on mobile
+  const currentPos = useRef(new Vector3(initialRadius, 10, initialRadius));
   const currentLookAt = useRef(new Vector3(0, 5, 0));
 
   // Rotation state
@@ -38,7 +55,7 @@ function CinematicCamera({
   // Base configuration
   const MAX_HEIGHT = 90;
   const MIN_HEIGHT = -20;
-  const RADIUS = 110; // Increased radius to zoom out
+  const RADIUS = initialRadius;
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -51,10 +68,31 @@ function CinematicCamera({
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
     };
 
+    // Touch handling for mobile
+    let touchStartY = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (isFocused) return;
+      const touchY = e.touches[0].clientY;
+      const deltaY = touchStartY - touchY;
+      targetScrollY.current += deltaY * 0.2; // Sensitivity
+      targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
+      touchStartY = touchY;
+    };
+
     // Attach to canvas element
     const canvas = gl.domElement;
     canvas.addEventListener('wheel', handleWheel, { passive: true });
-    return () => canvas.removeEventListener('wheel', handleWheel);
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+    };
   }, [isFocused, gl]);
 
   useFrame((state, delta) => {
@@ -72,6 +110,7 @@ function CinematicCamera({
 
       // Calculate orbiting position based on accumulated angle and scroll height
       // Only rotate if not hovered and not focused
+      // On mobile, maybe auto-rotate slowly even if hovered? No, keep consistent.
       if (!isHovered) {
         angle.current += delta * 0.05; // Slower rotation for less dizziness
       }
@@ -91,15 +130,13 @@ function CinematicCamera({
   });
 
   return (
-    <PerspectiveCamera makeDefault position={[110, 40, 110]} fov={32} />
+    <PerspectiveCamera makeDefault position={[110, 40, 110]} fov={isMobile ? 45 : 32} />
   );
 }
 
-// ... imports
-import { useRouter } from 'next/navigation';
-
 export default function Scene() {
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   const [cameraTarget, setCameraTarget] = useState(new Vector3(60, 30, 60));
   const [lookTarget, setLookTarget] = useState(new Vector3(0, 10, 0));
@@ -155,6 +192,7 @@ export default function Scene() {
           lookAtPos={lookTarget}
           isFocused={isFocused}
           isHovered={isHovered}
+          isMobile={isMobile}
         />
 
         {/* Improved Lighting Setup */}
@@ -191,19 +229,19 @@ export default function Scene() {
       </Canvas>
 
       {/* Modern Minimalist Overlay */}
-      <div className={`absolute top-0 left-0 p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
+      <div className={`absolute top-0 left-0 p-6 md:p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
         <div className="space-y-1">
-          <p className="text-[10px] uppercase tracking-[0.5em] text-[#d4af37] font-bold">
+          <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] text-[#d4af37] font-bold">
             Corporate Interactive Experience
           </p>
-          <h1 className="text-6xl md:text-7xl font-serif font-black tracking-tighter">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-black tracking-tighter">
             TOWER<span className="text-[#d4af37]">.</span>
           </h1>
         </div>
-        <div className="mt-6 flex items-center space-x-4">
-          <div className="h-[1px] w-12 bg-[#d4af37]/50"></div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-gray-400 font-light">
-            Select Company to Enter
+        <div className="mt-4 md:mt-6 flex items-center space-x-4">
+          <div className="h-[1px] w-8 md:w-12 bg-[#d4af37]/50"></div>
+          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-gray-400 font-light">
+            {isMobile ? 'Tap Company to Enter' : 'Select Company to Enter'}
           </p>
         </div>
       </div>

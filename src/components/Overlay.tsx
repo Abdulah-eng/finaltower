@@ -20,7 +20,7 @@ export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
             <div className="h-full flex flex-col text-white font-sans overflow-y-auto">
 
                 {/* Top Navigation */}
-                <div className="p-6 flex justify-between items-center border-b border-[#d4af37]/10">
+                <div className="p-4 md:p-6 flex justify-between items-center border-b border-[#d4af37]/10">
                     <span className="text-[10px] uppercase tracking-[0.4em] text-[#d4af37]/60 font-light">
                         Company Profile
                     </span>
@@ -33,12 +33,12 @@ export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
                 </div>
 
                 {/* Content Section */}
-                <div className="flex-1 flex flex-col p-8 md:p-12">
+                <div className="flex-1 flex flex-col p-6 md:p-12">
 
                     {/* Logo Container */}
                     {data.logo && !(data as any).isUnknown && (
-                        <div className="mb-12 animate-fade-in">
-                            <div className="w-24 h-24 bg-white/5 p-4 rounded-full border border-[#d4af37]/20 backdrop-blur-sm flex items-center justify-center group overflow-hidden">
+                        <div className="mb-8 md:mb-12 animate-fade-in">
+                            <div className="w-20 h-20 md:w-24 md:h-24 bg-white/5 p-4 rounded-full border border-[#d4af37]/20 backdrop-blur-sm flex items-center justify-center group overflow-hidden">
                                 <img
                                     src={data.logo}
                                     alt={data.name}
@@ -49,8 +49,8 @@ export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
                     )}
 
                     {/* Identity */}
-                    <div className="space-y-4 mb-10">
-                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-[#d4af37] leading-tight tracking-tight">
+                    <div className="space-y-4 mb-8 md:mb-10">
+                        <h2 className="text-3xl md:text-5xl font-serif font-bold text-[#d4af37] leading-tight tracking-tight">
                             {data.name}
                         </h2>
                         <div className="h-1 w-12 bg-[#d4af37]"></div>
@@ -58,14 +58,14 @@ export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
 
                     {/* Description */}
                     <div className="space-y-8 flex-1">
-                        <p className="text-lg md:text-xl text-gray-300 font-light leading-relaxed italic">
+                        <p className="text-base md:text-xl text-gray-300 font-light leading-relaxed italic">
                             {data.description}
                         </p>
 
                         {data.fullDescription && !(data as any).isUnknown && (
                             <div className="pt-8 border-t border-[#d4af37]/10">
                                 <h3 className="text-xs uppercase tracking-[0.3em] text-[#d4af37] mb-6 font-bold">Strategy & Vision</h3>
-                                <p className="text-base text-gray-400 leading-relaxed font-light">
+                                <p className="text-sm md:text-base text-gray-400 leading-relaxed font-light">
                                     {data.fullDescription}
                                 </p>
                             </div>
@@ -82,7 +82,7 @@ export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
                     </div>
 
                     {/* Actions */}
-                    <div className="mt-auto pt-12 space-y-4">
+                    <div className="mt-auto pt-8 md:pt-12 space-y-4">
                         {data.website && (
                             <button
                                 onClick={() => window.open(data.website, '_blank', 'noopener,noreferrer')}
@@ -104,7 +104,7 @@ export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
                 </div>
 
                 {/* Bottom Bar */}
-                <div className="p-6 border-t border-[#d4af37]/10 flex justify-between items-center bg-black/50">
+                <div className="p-4 md:p-6 border-t border-[#d4af37]/10 flex justify-between items-center bg-black/50">
                     <span className="text-[9px] uppercase tracking-[0.2em] text-gray-600">
                         © 2024 Tower of Companies
                     </span>
