@@ -2,7 +2,7 @@
 
 // ... (imports remain the same)
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { Environment, PerspectiveCamera, Stars } from '@react-three/drei';
+import { Environment, PerspectiveCamera, Stars, useProgress } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
@@ -41,28 +41,38 @@ function CinematicCamera({
   const controlsRef = useRef<any>(null);
 
   // Scroll state
-  const scrollY = useRef(10); // Start higher up
-  const targetScrollY = useRef(10);
+  const scrollY = useRef(90); // Start at MAX_HEIGHT (Top)
+  const targetScrollY = useRef(90);
 
   // Camera state
   const initialRadius = isMobile ? 150 : 110; // Zoom out more on mobile
-  const currentPos = useRef(new Vector3(initialRadius, 10, initialRadius));
+  const currentPos = useRef(new Vector3(initialRadius, 90, initialRadius));
   const currentLookAt = useRef(new Vector3(0, 5, 0));
 
   // Rotation state
   const angle = useRef(0.5);
+  const targetAngle = useRef(0.5);
 
   // Base configuration
   const MAX_HEIGHT = 90;
-  const MIN_HEIGHT = -20;
+  // Raised bottom limit from -20 to 5 to stop at the base of the tower
+  const MIN_HEIGHT = 5;
   const RADIUS = initialRadius;
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       if (isFocused) return; // Disable scroll nav when focused on a door
 
-      // Update target scroll position - Faster scrolling
-      targetScrollY.current += e.deltaY * 0.08;
+      // Update target scroll position - Inverted direction for natural feeling
+      // "Mirroring" fix: e.deltaY > 0 (scroll down) should move camera down? 
+      // User said "Direction of scrolling vertical is mirroring". 
+      // Previously: targetScrollY.current += e.deltaY * 0.08; (Scroll down -> Increase Y -> Camera goes UP)
+      // New: targetScrollY.current -= e.deltaY * 0.08; (Scroll down -> Decrease Y -> Camera goes DOWN)
+      targetScrollY.current -= e.deltaY * 0.08;
+
+      // Horizontal scrolling for Rotation
+      // deltaX is usually produced by trackpads or shift+wheel
+      targetAngle.current += e.deltaX * 0.005;
 
       // Clamp values
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
@@ -70,16 +80,32 @@ function CinematicCamera({
 
     // Touch handling for mobile
     let touchStartY = 0;
+    let touchStartX = 0;
     const handleTouchStart = (e: TouchEvent) => {
       touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
     };
     const handleTouchMove = (e: TouchEvent) => {
       if (isFocused) return;
       const touchY = e.touches[0].clientY;
+      const touchX = e.touches[0].clientX;
+
       const deltaY = touchStartY - touchY;
-      targetScrollY.current += deltaY * 0.2; // Sensitivity
+      const deltaX = touchStartX - touchX;
+
+      // Invert deltaY effect to match wheel
+      // Drag UP (deltaY positive) -> Scroll DOWN? Or Drag UP -> Scroll UP?
+      // Usually Drag UP = Move Content UP = Camera moves DOWN.
+      // Let's stick to standard "Unnatural" scroll for touch (Drag Up -> Go Down)
+      targetScrollY.current -= deltaY * 0.2;
+
+      // Horizontal Drag -> Rotate
+      targetAngle.current += deltaX * 0.01;
+
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
+
       touchStartY = touchY;
+      touchStartX = touchX;
     };
 
     // Attach to canvas element
@@ -106,14 +132,21 @@ function CinematicCamera({
       // Scroll Navigation Mode
 
       // Smoothly interpolate scroll
-      scrollY.current += (targetScrollY.current - scrollY.current) * 0.08;
+      // Smoothly interpolate scroll
+      // Increased lerp factor to 0.5 for almost instant stop (very little drift)
+      // Tuned to 0.25 to reduce stutter/steps while keeping it responsive
+      scrollY.current += (targetScrollY.current - scrollY.current) * 0.25;
+
+      // Smoothly interpolate angle for fluid rotation
+      angle.current += (targetAngle.current - angle.current) * 0.1;
 
       // Calculate orbiting position based on accumulated angle and scroll height
       // Only rotate if not hovered and not focused
       // On mobile, maybe auto-rotate slowly even if hovered? No, keep consistent.
-      if (!isHovered) {
-        angle.current += delta * 0.05; // Slower rotation for less dizziness
-      }
+      // Automatic rotation ONLY if no user input? removed for now to give control.
+      /* if (!isHovered) {
+         angle.current += delta * 0.05; 
+      } */
 
       const x = Math.sin(angle.current) * RADIUS;
       const z = Math.cos(angle.current) * RADIUS;
@@ -131,6 +164,45 @@ function CinematicCamera({
 
   return (
     <PerspectiveCamera makeDefault position={[110, 40, 110]} fov={isMobile ? 45 : 32} />
+  );
+}
+
+// Custom Loading Screen
+function LoadingScreen() {
+  const { progress } = useProgress();
+  const [finished, setFinished] = useState(false);
+
+  useEffect(() => {
+    if (progress === 100) {
+      // Delay slightly to ensure smooth fade out
+      const timer = setTimeout(() => setFinished(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [progress]);
+
+  // If finished and transitioned out, we can return null (or keep it purely visually hidden)
+  // But keeping it with opacity 0 allows smooth transition.
+
+  return (
+    <div
+      className={`absolute inset-0 z-50 bg-[#020202] flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out pointer-events-none ${finished || progress === 100 ? 'opacity-0' : 'opacity-100'}`}
+      style={{ pointerEvents: finished ? 'none' : 'auto' }}
+    >
+      <div className="space-y-4 text-center">
+        <h1 className="text-4xl md:text-6xl font-serif font-black tracking-tighter text-white">
+          TOWER<span className="text-[#d4af37]">.</span>
+        </h1>
+        <div className="w-48 h-1 bg-gray-800 rounded-full overflow-hidden mx-auto">
+          <div
+            className="h-full bg-[#d4af37] transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p className="text-[#d4af37] text-xs tracking-widest uppercase font-bold">
+          {progress.toFixed(0)}% Loaded
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -177,15 +249,22 @@ export default function Scene() {
   };
 
   return (
-    <div className="w-full h-screen bg-[#020202] relative overflow-hidden">
+    <div className="w-full h-screen bg-[#333] relative overflow-hidden">
+
+      {/* Loading Screen Overlay */}
+      <LoadingScreen />
 
       <Canvas
         shadows
         dpr={[1, 1.5]} // Optimize performance
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       >
-        <color attach="background" args={['#020204']} />
-        <fog attach="fog" args={['#020204', 80, 250]} />
+        {/* Skybox-ish background instead of black void */}
+        {/* Premium Dusk: Deep Slate Blue used for a cohesive, rich night look */}
+        <color attach="background" args={['#0b1015']} />
+
+        {/* Adjusted fog for a more dramatic, premium depth */}
+        <fog attach="fog" args={['#0b1015', 50, 350]} />
 
         <CinematicCamera
           targetPos={cameraTarget}
@@ -195,23 +274,29 @@ export default function Scene() {
           isMobile={isMobile}
         />
 
-        {/* Improved Lighting Setup */}
-        <ambientLight intensity={0.4} /> {/* Increased from 0.2 */}
+        {/* Improved Lighting Setup - Premium Contrast */}
+        {/* Ambient: Cool Moonlight to contrast with warm gold */}
+        <ambientLight intensity={0.5} color="#b0c4de" />
+
+        {/* Spot: Warm Gold Key Light to highlight the structure */}
         <spotLight
           position={[50, 80, 50]}
-          angle={0.2}
+          angle={0.25}
           penumbra={1}
-          intensity={1.5}
+          intensity={2.0}
+          color="#ffd700"
           castShadow
-          shadow-mapSize={[1024, 1024]} // Reduced from 2048 for performance
+          shadow-mapSize={[1024, 1024]}
           shadow-bias={-0.0001}
         />
-        <pointLight position={[-40, 30, -40]} intensity={0.4} color="#d4af37" distance={100} />
-        <pointLight position={[40, 0, 40]} intensity={0.8} color="#b0b0ff" distance={100} />
+        {/* Rim Light: Subtle warm glow from opposite side */}
+        <pointLight position={[-40, 30, -40]} intensity={0.8} color="#ffaa00" distance={100} />
+        {/* Fill Light: Cool blue to fill shadows */}
+        <pointLight position={[40, 0, 40]} intensity={0.5} color="#4682b4" distance={100} />
 
-        <Environment preset="night" blur={0.8} background={false} />
+        <Environment preset="city" blur={0.6} background={false} />
 
-        <Stars radius={300} depth={60} count={12000} factor={6} saturation={0} fade speed={1} />
+        <Stars radius={300} depth={60} count={8000} factor={4} saturation={0} fade speed={0.5} />
 
         <Suspense fallback={null}>
           <Tower onSelect={handleSelect} onHover={setIsHovered} />

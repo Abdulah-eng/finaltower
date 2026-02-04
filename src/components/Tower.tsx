@@ -1,7 +1,7 @@
 'use client';
 
 import { useGLTF } from '@react-three/drei';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, BoxGeometry, MeshBasicMaterial } from 'three';
 import { getCompanyByMesh, getCompanyById } from '../data/companies';
 
@@ -14,6 +14,10 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
     // OPTIMIZED MODEL: 11.5MB (vs 140MB+)
     const { scene } = useGLTF('/models/colleseum_optimized.glb');
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
+
+    // Setup materials, interaction, and hotspots
+    // Store meshes by company ID for efficient access (avoids traversing scene on every hover)
+    const meshesByCompanyRef = useRef<Record<string, Mesh[]>>({});
 
     // Setup materials, interaction, and hotspots
     useEffect(() => {
@@ -59,36 +63,6 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
                 }
             }
 
-            // Apply Materials
-            if (child.material) {
-                const originalMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
-                const material = originalMaterial.clone();
-                child.material = material;
-
-                if ((material as any).isMeshStandardMaterial) {
-                    const standardMat = material as MeshStandardMaterial;
-                    standardMat.side = DoubleSide;
-
-                    if (company) {
-                        // DOOR MATERIAL
-                        standardMat.metalness = 0.8;
-                        standardMat.roughness = 0.2;
-                        standardMat.emissive = new Color('#d4af37');
-                        standardMat.emissiveIntensity = 0.6;
-                        standardMat.color = new Color('#1a1a1a');
-                    } else {
-                        // STRUCTURE MATERIAL
-                        standardMat.map = null;
-                        standardMat.color = new Color('#444444');
-                        standardMat.metalness = 0.1;
-                        standardMat.roughness = 0.8;
-                        standardMat.envMapIntensity = 0.5;
-                        standardMat.emissive = new Color('#000000');
-                        standardMat.emissiveIntensity = 0;
-                    }
-                }
-            }
-
             // Interaction optimization: disable raycast for non-company meshes
             if (!company) {
                 child.raycast = () => { };
@@ -114,9 +88,6 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
                 const hotspot = new Mesh(geometry, material);
 
                 hotspot.name = hotspotName;
-                // Position at centroid. 
-                // Note: The centroid is world pos. If scene is at 0,0,0, this works. 
-                // If scene is transformed, might need local conversion. Assuming scene root identity.
                 hotspot.position.copy(center);
 
                 // Also give it a 'DoorGlow' light
@@ -126,42 +97,51 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
 
                 scene.add(hotspot);
 
-                // IMPORTANT: Make sure getCompanyByMesh finds this hotspot too!
-                // We can't easily change getCompanyByMesh logic since it relies on static list.
-                // We will rely on Event Handler logic to look up company by ID if name matches special pattern?
-                // OR: We give it a name that getCompanyByMesh recognizes?
-                // Example: Pick the first mesh name from the group.
-                hotspot.name = meshes[0].name;
-                // WARNING: This might confuse 'meshesByCompany' loop if we run this multiple times? 
-                // But we check getObjectByName(hotspotName) ... wait, if we name it meshes[0].name, we can't find it by hotspotName.
-                // Use a userData field instead?
                 hotspot.userData.companyId = companyId;
                 hotspot.userData.isHotspot = true;
             }
         });
 
+        // Update ref
+        meshesByCompanyRef.current = meshesByCompany;
+
     }, [scene]);
 
     // Helper to Apply Highlight to ALL meshes of a company
     const setHighlight = (companyId: string, active: boolean) => {
-        scene.traverse((obj) => {
-            if (obj instanceof Mesh) {
-                const c = getCompanyByMesh(obj.name) || (obj.userData.companyId ? getCompanyById(obj.userData.companyId) : null);
-                if (c && c.id === companyId) {
-                    // It's part of the company. Highlight it (unless it's the invisible hotspot)
-                    if (obj.userData.isHotspot) return;
+        const meshes = meshesByCompanyRef.current[companyId];
+        if (!meshes) return;
 
-                    const mat = obj.material as MeshStandardMaterial;
-                    if (mat && mat.emissiveIntensity !== undefined) {
-                        if (active) {
-                            mat.emissiveIntensity = 2.5;
-                            mat.emissive = new Color('#ffeebb');
-                        } else {
-                            mat.emissiveIntensity = 0.6;
-                            mat.emissive = new Color('#d4af37');
-                        }
+        meshes.forEach((obj) => {
+            // Skip hotspots
+            if (obj.userData.isHotspot) return;
+
+            // Ensure we have stored the original material
+            if (!obj.userData.originalMaterial) {
+                obj.userData.originalMaterial = obj.material;
+            }
+
+            if (active) {
+                // Create clone if not exists
+                if (!obj.userData.highlightMaterial) {
+                    const original = obj.userData.originalMaterial;
+                    // Handle array materials (rare but possible) or single
+                    const baseMat = Array.isArray(original) ? original[0] : original;
+
+                    const clone = baseMat.clone();
+                    // Customize the clone for highlight
+                    if (clone.emissive !== undefined) {
+                        clone.emissive = new Color('#ffeebb');
+                        clone.emissiveIntensity = 2.5;
                     }
+                    obj.userData.highlightMaterial = clone;
                 }
+
+                // Apply the clone
+                obj.material = obj.userData.highlightMaterial;
+            } else {
+                // Revert to original shared material
+                obj.material = obj.userData.originalMaterial;
             }
         });
     };
