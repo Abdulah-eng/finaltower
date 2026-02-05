@@ -7,6 +7,7 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
+import Overlay from './Overlay';
 
 import { getCompanyByMesh } from '../data/companies';
 import { useRouter } from 'next/navigation';
@@ -224,26 +225,32 @@ export default function Scene() {
 
     if (worldPos && company) {
       // CALCULATION FOR PORTAL PENETRATION
-      // We move the camera TO the world position of the door and slightly PAST it
+      // Use the precise centroid (worldPos) from Tower.tsx
       const direction = worldPos.clone().normalize();
 
-      // Portal entry point: Very close to or slightly through the door
-      // We use a small scalar so it feels like it enters the gate
-      const portalTarget = worldPos.clone().add(direction.multiplyScalar(2));
+      // Portal entry point: Perfectly in front of the gate (slightly outside to avoid clipping)
+      const portalTarget = worldPos.clone().add(direction.multiplyScalar(0.5)); // 0.5m setback
 
       setCameraTarget(portalTarget);
+
+      // Look EXACTLY at the center
       setLookTarget(worldPos);
       setIsFocused(true);
 
       // REDIRECT LOGIC
-      // after animation -> push to internal page
+      // Wait for camera to actually get close before pushing
+      // We'll use a timeout as a fail-safe, but usually the animation takes ~1-1.5s
       if (company.id) {
         setTimeout(() => {
           if (!websiteOpened.current) {
             websiteOpened.current = true;
             router.push(`/company/${company.id}`);
+
+            // Optional: Reset state after push so if they come back it's clean??
+            // Actually, next/navigation usually remounts components or preserves state.
+            // If they click "Back", component might mount freshly.
           }
-        }, 1500);
+        }, 1200); // Tuned for arrival
       }
     }
   };
@@ -255,8 +262,8 @@ export default function Scene() {
       <LoadingScreen />
 
       <Canvas
-        shadows
-        dpr={[1, 1.5]} // Optimize performance
+        shadows={!isMobile} // Disable shadows entirely on mobile if "Very Heavy"
+        dpr={isMobile ? [1, 1] : [1, 1.5]} // Clamp DPR on mobile
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       >
         {/* Skybox-ish background instead of black void */}
@@ -274,64 +281,46 @@ export default function Scene() {
           isMobile={isMobile}
         />
 
-        {/* Improved Lighting Setup - Premium Contrast */}
-        {/* Ambient: Cool Moonlight to contrast with warm gold */}
-        <ambientLight intensity={0.5} color="#b0c4de" />
+        {/* Improved Lighting Setup - Premium Contrast & Balance */}
+        {/* Ambient: Increased intensity to fill "Dark" spots. Cool Moonlight. */}
+        <ambientLight intensity={0.7} color="#b0c4de" />
 
         {/* Spot: Warm Gold Key Light to highlight the structure */}
+        {/* Reduced mapSize to 512 for performance */}
         <spotLight
           position={[50, 80, 50]}
           angle={0.25}
           penumbra={1}
-          intensity={2.0}
+          intensity={1.8}
           color="#ffd700"
-          castShadow
-          shadow-mapSize={[1024, 1024]}
+          castShadow={!isMobile} // Disable shadow casting on mobile
+          shadow-mapSize={[512, 512]}
           shadow-bias={-0.0001}
         />
         {/* Rim Light: Subtle warm glow from opposite side */}
-        <pointLight position={[-40, 30, -40]} intensity={0.8} color="#ffaa00" distance={100} />
-        {/* Fill Light: Cool blue to fill shadows */}
-        <pointLight position={[40, 0, 40]} intensity={0.5} color="#4682b4" distance={100} />
+        <pointLight position={[-40, 30, -40]} intensity={1.0} color="#ffaa00" distance={100} />
+        {/* Fill Light: Stronger Cool blue to fill shadows on the dark side */}
+        <pointLight position={[40, 0, 40]} intensity={0.8} color="#4682b4" distance={100} />
 
         <Environment preset="city" blur={0.6} background={false} />
 
-        <Stars radius={300} depth={60} count={8000} factor={4} saturation={0} fade speed={0.5} />
+        {/* Optimization: Reduce star count significantly */}
+        <Stars radius={300} depth={60} count={3000} factor={4} saturation={0} fade speed={0.5} />
 
         <Suspense fallback={null}>
           <Tower onSelect={handleSelect} onHover={setIsHovered} />
         </Suspense>
 
-        <EffectComposer enableNormalPass={false}>
-          <Bloom
-            luminanceThreshold={1.5} // Higher threshold to only bloom very bright things
-            mipmapBlur
-            intensity={0.3}
-            radius={0.4}
-          />
-          <Vignette eskil={false} offset={0.1} darkness={1.1} />
-        </EffectComposer>
+        {/* Post Processing: ONLY on Desktop. Too heavy for mobile web in some cases. */}
+        {!isMobile && (
+          <EffectComposer disableNormalPass>
+            <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
+            <Vignette eskil={false} offset={0.1} darkness={0.5} />
+          </EffectComposer>
+        )}
+
       </Canvas>
-
-      {/* Modern Minimalist Overlay */}
-      <div className={`absolute top-0 left-0 p-6 md:p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
-        <div className="space-y-1">
-          <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] text-[#d4af37] font-bold">
-            Corporate Interactive Experience
-          </p>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-black tracking-tighter">
-            TOWER<span className="text-[#d4af37]">.</span>
-          </h1>
-        </div>
-        <div className="mt-4 md:mt-6 flex items-center space-x-4">
-          <div className="h-[1px] w-8 md:w-12 bg-[#d4af37]/50"></div>
-          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-gray-400 font-light">
-            {isMobile ? 'Tap Company to Enter' : 'Select Company to Enter'}
-          </p>
-        </div>
-      </div>
-
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+      <Overlay />
     </div>
   );
 }
