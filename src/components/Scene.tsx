@@ -7,7 +7,6 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
-import Overlay from './Overlay';
 
 import { getCompanyByMesh } from '../data/companies';
 import { useRouter } from 'next/navigation';
@@ -262,8 +261,8 @@ export default function Scene() {
       <LoadingScreen />
 
       <Canvas
-        shadows={!isMobile} // Disable shadows entirely on mobile if "Very Heavy"
-        dpr={isMobile ? [1, 1] : [1, 1.5]} // Clamp DPR on mobile
+        shadows={false} // Mont-Fort Style: No real-time shadows for max FPS
+        dpr={isMobile ? [1, 1] : [1, 1.5]}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       >
         {/* Skybox-ish background instead of black void */}
@@ -313,14 +312,29 @@ export default function Scene() {
 
         {/* Post Processing: ONLY on Desktop. Too heavy for mobile web in some cases. */}
         {!isMobile && (
-          <EffectComposer disableNormalPass>
+          <EffectComposer enableNormalPass={false}>
             <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
             <Vignette eskil={false} offset={0.1} darkness={0.5} />
           </EffectComposer>
         )}
 
       </Canvas>
-      <Overlay />
+      <div className={`absolute top-0 left-0 p-6 md:p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
+        <div className="space-y-1">
+          <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] text-[#d4af37] font-bold">
+            Corporate Interactive Experience
+          </p>
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-black tracking-tighter">
+            TOWER<span className="text-[#d4af37]">.</span>
+          </h1>
+        </div>
+        <div className="mt-4 md:mt-6 flex items-center space-x-4">
+          <div className="h-[1px] w-8 md:w-12 bg-[#d4af37]/50"></div>
+          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-gray-400 font-light">
+            {isMobile ? 'Tap Company to Enter' : 'Select Company to Enter'}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
