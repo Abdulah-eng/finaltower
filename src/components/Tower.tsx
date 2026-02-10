@@ -11,8 +11,8 @@ interface TowerProps {
 }
 
 export default function Tower({ onSelect, onHover }: TowerProps) {
-    // OPTIMIZED MODEL: ~3MB (Draco Compressed)
-    const { scene } = useGLTF('/models/colleseum_draco.glb');
+    // OPTIMIZED MODEL: ~8.2MB (Draco + 1024px Textures)
+    const { scene } = useGLTF('/models/colleseum_final.glb');
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
 
     // Setup materials, interaction, and hotspots
@@ -189,4 +189,4 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
     );
 }
 
-useGLTF.preload('/models/colleseum_draco.glb');
+useGLTF.preload('/models/colleseum_final.glb');

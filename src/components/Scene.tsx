@@ -7,6 +7,7 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
+import Loader from './Loader';
 
 import { getCompanyByMesh } from '../data/companies';
 import { useRouter } from 'next/navigation';
@@ -167,44 +168,7 @@ function CinematicCamera({
   );
 }
 
-// Custom Loading Screen
-function LoadingScreen() {
-  const { progress } = useProgress();
-  const [finished, setFinished] = useState(false);
 
-  useEffect(() => {
-    if (progress === 100) {
-      // Delay slightly to ensure smooth fade out
-      const timer = setTimeout(() => setFinished(true), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [progress]);
-
-  // If finished and transitioned out, we can return null (or keep it purely visually hidden)
-  // But keeping it with opacity 0 allows smooth transition.
-
-  return (
-    <div
-      className={`absolute inset-0 z-50 bg-[#020202] flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out pointer-events-none ${finished || progress === 100 ? 'opacity-0' : 'opacity-100'}`}
-      style={{ pointerEvents: finished ? 'none' : 'auto' }}
-    >
-      <div className="space-y-4 text-center">
-        <h1 className="text-4xl md:text-6xl font-serif font-black tracking-tighter text-white">
-          TOWER<span className="text-[#d4af37]">.</span>
-        </h1>
-        <div className="w-48 h-1 bg-gray-800 rounded-full overflow-hidden mx-auto">
-          <div
-            className="h-full bg-[#d4af37] transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <p className="text-[#d4af37] text-xs tracking-widest uppercase font-bold">
-          {progress.toFixed(0)}% Loaded
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export default function Scene() {
   const router = useRouter();
@@ -258,11 +222,11 @@ export default function Scene() {
     <div className="w-full h-screen bg-[#333] relative overflow-hidden">
 
       {/* Loading Screen Overlay */}
-      <LoadingScreen />
+      <Loader />
 
       <Canvas
         shadows={false} // Mont-Fort Style: No real-time shadows for max FPS
-        dpr={isMobile ? [1, 1] : [1, 1.5]}
+        dpr={isMobile ? [1, 1.5] : [1, 2]} // Use reasonable DPR limits
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       >
         {/* Skybox-ish background instead of black void */}
