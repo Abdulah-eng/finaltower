@@ -32,7 +32,7 @@ export default function CompanyPage() {
             <nav className="fixed top-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div
-                        onClick={() => router.push('/')}
+                        onClick={() => router.push(`/?exit=${company.id}`)}
                         className="cursor-pointer group flex items-center gap-4"
                     >
                         <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:border-[#d4af37] transition-colors">

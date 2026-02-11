@@ -3,7 +3,7 @@
 // ... (imports remain the same)
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Environment, PerspectiveCamera, Stars, useProgress } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
@@ -30,13 +30,15 @@ function CinematicCamera({
   lookAtPos,
   isFocused,
   isHovered,
-  isMobile
+  isMobile,
+  cameraStateRef
 }: {
   targetPos: Vector3;
   lookAtPos: Vector3;
   isFocused: boolean;
   isHovered: boolean;
   isMobile: boolean;
+  cameraStateRef: React.MutableRefObject<{ pos: Vector3; lookAt: Vector3 }>;
 }) {
   const { camera, gl } = useThree();
   const controlsRef = useRef<any>(null);
@@ -44,11 +46,6 @@ function CinematicCamera({
   // Scroll state
   const scrollY = useRef(90); // Start at MAX_HEIGHT (Top)
   const targetScrollY = useRef(90);
-
-  // Camera state
-  const initialRadius = isMobile ? 150 : 110; // Zoom out more on mobile
-  const currentPos = useRef(new Vector3(initialRadius, 90, initialRadius));
-  const currentLookAt = useRef(new Vector3(0, 5, 0));
 
   // Rotation state
   const angle = useRef(0.5);
@@ -58,6 +55,7 @@ function CinematicCamera({
   const MAX_HEIGHT = 90;
   // Raised bottom limit from -20 to 5 to stop at the base of the tower
   const MIN_HEIGHT = 5;
+  const initialRadius = isMobile ? 150 : 110;
   const RADIUS = initialRadius;
 
   useEffect(() => {
@@ -123,12 +121,15 @@ function CinematicCamera({
   }, [isFocused, gl]);
 
   useFrame((state, delta) => {
-    const step = isFocused ? 0.06 : 0.04; // Slightly snappier
+    // Speed up entry animation (0.06 -> 0.1) to ensure we reach the 'inside' position before fade out
+    const step = isFocused ? 0.1 : 0.04;
+    const currentPos = cameraStateRef.current.pos;
+    const currentLookAt = cameraStateRef.current.lookAt;
 
     if (isFocused) {
       // Zoom in to specific door
-      currentPos.current.lerp(targetPos, step);
-      currentLookAt.current.lerp(lookAtPos, step);
+      currentPos.lerp(targetPos, step);
+      currentLookAt.lerp(lookAtPos, step);
     } else {
       // Scroll Navigation Mode
 
@@ -155,12 +156,12 @@ function CinematicCamera({
       const orbitPos = new Vector3(x, scrollY.current, z);
       const orbitLookAt = new Vector3(0, scrollY.current * 0.6, 0);
 
-      currentPos.current.lerp(orbitPos, step);
-      currentLookAt.current.lerp(orbitLookAt, step);
+      currentPos.lerp(orbitPos, step);
+      currentLookAt.lerp(orbitLookAt, step);
     }
 
-    camera.position.copy(currentPos.current);
-    camera.lookAt(currentLookAt.current);
+    camera.position.copy(currentPos);
+    camera.lookAt(currentLookAt);
   });
 
   return (
@@ -180,19 +181,31 @@ export default function Scene() {
   const [isHovered, setIsHovered] = useState(false);
 
   // Use a ref to track if we've already opened the website for the current selection
+  // Also using a state to force re-render for the overlay since ref changes don't trigger render
   const websiteOpened = useRef(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Shared Camera State for smooth transitions & exit animations
+  const initialRadius = isMobile ? 150 : 110;
+  const cameraStateRef = useRef({
+    pos: new Vector3(initialRadius, 90, initialRadius),
+    lookAt: new Vector3(0, 5, 0)
+  });
 
   const handleSelect = (meshName: string, worldPos?: Vector3) => {
     const company = getCompanyByMesh(meshName);
-    websiteOpened.current = false;
+    websiteOpened.current = false; // Reset on new selection attempt
+    setIsTransitioning(false);
 
     if (worldPos && company) {
       // CALCULATION FOR PORTAL PENETRATION
       // Use the precise centroid (worldPos) from Tower.tsx
       const direction = worldPos.clone().normalize();
 
-      // Portal entry point: Perfectly in front of the gate (slightly outside to avoid clipping)
-      const portalTarget = worldPos.clone().add(direction.multiplyScalar(0.5)); // 0.5m setback
+      // Portal entry point: Move DEEP inside
+      // User Req: "move camera toward and even little inside door" -> Big negative scalar
+      // -8.0 ensures we definitely clip through the door frame before fading
+      const portalTarget = worldPos.clone().add(direction.multiplyScalar(-8.0));
 
       setCameraTarget(portalTarget);
 
@@ -204,15 +217,13 @@ export default function Scene() {
       // Wait for camera to actually get close before pushing
       // We'll use a timeout as a fail-safe, but usually the animation takes ~1-1.5s
       if (company.id) {
+        // Trigger fade out slightly before push
         setTimeout(() => {
-          if (!websiteOpened.current) {
-            websiteOpened.current = true;
-            router.push(`/company/${company.id}`);
+          setIsTransitioning(true); // Trigger fade to black
+        }, 800);
 
-            // Optional: Reset state after push so if they come back it's clean??
-            // Actually, next/navigation usually remounts components or preserves state.
-            // If they click "Back", component might mount freshly.
-          }
+        setTimeout(() => {
+          router.push(`/company/${company.id}`);
         }, 1200); // Tuned for arrival
       }
     }
@@ -223,6 +234,11 @@ export default function Scene() {
 
       {/* Loading Screen Overlay */}
       <Loader />
+
+      {/* Transition Overlay (Fade to Black on Exit) */}
+      <div
+        className={`absolute inset-0 z-40 bg-black pointer-events-none transition-opacity duration-700 ease-in ${isTransitioning ? 'opacity-100' : 'opacity-0'}`}
+      />
 
       <Canvas
         shadows={false} // Mont-Fort Style: No real-time shadows for max FPS
@@ -242,6 +258,7 @@ export default function Scene() {
           isFocused={isFocused}
           isHovered={isHovered}
           isMobile={isMobile}
+          cameraStateRef={cameraStateRef}
         />
 
         {/* Improved Lighting Setup - Premium Contrast & Balance */}
@@ -271,12 +288,13 @@ export default function Scene() {
         <Stars radius={300} depth={60} count={3000} factor={4} saturation={0} fade speed={0.5} />
 
         <Suspense fallback={null}>
-          <Tower onSelect={handleSelect} onHover={setIsHovered} />
+          <Tower onSelect={handleSelect} onHover={setIsHovered} cameraStateRef={cameraStateRef} />
         </Suspense>
 
         {/* Post Processing: ONLY on Desktop. Too heavy for mobile web in some cases. */}
         {!isMobile && (
-          <EffectComposer enableNormalPass={false}>
+          <EffectComposer enableNormalPass={false} multisampling={0}>
+            <SMAA />
             <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
             <Vignette eskil={false} offset={0.1} darkness={0.5} />
           </EffectComposer>

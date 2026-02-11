@@ -10,9 +10,32 @@ interface TowerProps {
     onHover: (hovered: boolean) => void;
 }
 
-export default function Tower({ onSelect, onHover }: TowerProps) {
+import { useRouter, useSearchParams } from 'next/navigation';
+
+interface TowerProps {
+    onSelect: (name: string, position?: Vector3) => void;
+    onHover: (hovered: boolean) => void;
+    cameraStateRef?: React.MutableRefObject<{ pos: Vector3; lookAt: Vector3 } | null>;
+}
+
+export default function Tower({ onSelect, onHover, cameraStateRef }: TowerProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     // OPTIMIZED MODEL: ~8.2MB (Draco + 1024px Textures)
     const { scene } = useGLTF('/models/colleseum_final.glb');
+
+    // Debug: Check distinct materials
+    useEffect(() => {
+        const uniqueMaterials = new Set();
+        scene.traverse((child) => {
+            if (child instanceof Mesh && child.material) {
+                const mat = Array.isArray(child.material) ? child.material[0] : child.material;
+                uniqueMaterials.add(mat.name || mat.uuid);
+            }
+        });
+        console.log("Unique Materials Found:", uniqueMaterials.size, uniqueMaterials);
+    }, [scene]);
+
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
 
     // Setup materials, interaction, and hotspots
@@ -28,6 +51,23 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
         // Pass 1: Collect meshes and identify explicit doors
         scene.traverse((child) => {
             if (child instanceof Mesh) {
+                // Fix "Dancing Pixels": Force Anisotropy
+                if (child.material) {
+                    const applyAnisotropy = (mat: any) => {
+                        if (mat.map) mat.map.anisotropy = 16;
+                        if (mat.emissiveMap) mat.emissiveMap.anisotropy = 16;
+                        if (mat.normalMap) mat.normalMap.anisotropy = 16;
+                        if (mat.roughnessMap) mat.roughnessMap.anisotropy = 16;
+                        if (mat.metalnessMap) mat.metalnessMap.anisotropy = 16;
+                    };
+
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(applyAnisotropy);
+                    } else {
+                        applyAnisotropy(child.material);
+                    }
+                }
+
                 child.castShadow = true;
                 child.receiveShadow = true;
                 allMeshes.push(child);
@@ -105,7 +145,33 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
         // Update ref
         meshesByCompanyRef.current = meshesByCompany;
 
-    }, [scene]);
+        // EXIT ANIMATION LOGIC
+        // If we returned from a company page (?exit=ID), snap camera to that door
+        const exitId = searchParams.get('exit');
+        if (exitId && meshesByCompany[exitId] && cameraStateRef && cameraStateRef.current) {
+            const meshes = meshesByCompany[exitId];
+            if (meshes.length > 0) {
+                // Calculate Centroid (Door Position)
+                const center = new Vector3();
+                meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
+                center.divideScalar(meshes.length);
+
+                // Calculate "Portal" Position (Camera Start)
+                // Same logic as entry: Move INSIDE (-8.0)
+                const direction = center.clone().normalize();
+                const startPos = center.clone().add(direction.multiplyScalar(-8.0));
+
+                // SNAP CAMERA
+                cameraStateRef.current.pos.copy(startPos);
+                cameraStateRef.current.lookAt.copy(center);
+
+                // Clear the param so it doesn't happen again on refresh? 
+                // Actually, next/navigation router.replace might be good, but maybe overkill.
+                // The animation will drift back anyway.
+            }
+        }
+
+    }, [scene, searchParams]); // Add searchParams dependency
 
     // Helper to Apply Highlight to ALL meshes of a company
     const setHighlight = (companyId: string, active: boolean) => {
@@ -160,6 +226,9 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
                     document.body.style.cursor = 'pointer';
                     onHover(true);
                     setHighlight(company.id, true);
+
+                    // PREFETCH for smoother transmission
+                    router.prefetch(`/company/${company.id}`);
                 }
             }}
             onPointerOut={(e: any) => {
@@ -181,9 +250,18 @@ export default function Tower({ onSelect, onHover }: TowerProps) {
 
                 if (!company) return;
 
-                // Pass the interaction point (or centroid if it's a hotspot/gap click)
-                const intersectionPoint = e.point;
-                onSelect(company.meshNames[0], intersectionPoint);
+                // FIX: Use Centroid instead of e.point to avoid Hotspot Offset Issues
+                const meshes = meshesByCompanyRef.current[company.id];
+                let targetPoint = e.point;
+
+                if (meshes && meshes.length > 0) {
+                    const center = new Vector3();
+                    meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
+                    center.divideScalar(meshes.length);
+                    targetPoint = center;
+                }
+
+                onSelect(company.meshNames[0], targetPoint);
             }}
         />
     );
