@@ -1,15 +1,9 @@
 'use client';
 
-import { useGLTF } from '@react-three/drei';
-import { useState, useEffect, useRef } from 'react';
-import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, BoxGeometry, MeshBasicMaterial } from 'three';
-import { getCompanyByMesh, getCompanyById } from '../data/companies';
-
-interface TowerProps {
-    onSelect: (name: string, position?: Vector3) => void;
-    onHover: (hovered: boolean) => void;
-}
-
+import { useGLTF, Gltf } from '@react-three/drei';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Mesh, Vector3, Euler, Color, Group, Object3D, Quaternion } from 'three';
+import { getCompanyByMesh, getCompanyById, companies } from '../data/companies';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface TowerProps {
@@ -24,247 +18,193 @@ export default function Tower({ onSelect, onHover, cameraStateRef }: TowerProps)
     // OPTIMIZED MODEL: ~8.2MB (Draco + 1024px Textures)
     const { scene } = useGLTF('/models/colleseum_final.glb');
 
-    // Debug: Check distinct materials
-    useEffect(() => {
-        const uniqueMaterials = new Set();
-        scene.traverse((child) => {
-            if (child instanceof Mesh && child.material) {
-                const mat = Array.isArray(child.material) ? child.material[0] : child.material;
-                uniqueMaterials.add(mat.name || mat.uuid);
-            }
-        });
-        console.log("Unique Materials Found:", uniqueMaterials.size, uniqueMaterials);
-    }, [scene]);
-
+    const [anchors, setAnchors] = useState<Record<string, { position: Vector3, rotation: Euler, scale: Vector3 }>>({});
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
-
-    // Setup materials, interaction, and hotspots
-    // Store meshes by company ID for efficient access (avoids traversing scene on every hover)
     const meshesByCompanyRef = useRef<Record<string, Mesh[]>>({});
 
-    // Setup materials, interaction, and hotspots
+    // Setup: Find anchors, hide originals, and prepare interactions
     useEffect(() => {
-        const allMeshes: Mesh[] = [];
-        const companyMeshes: Mesh[] = [];
+        const newAnchors: Record<string, { position: Vector3, rotation: Euler, scale: Vector3 }> = {};
         const meshesByCompany: Record<string, Mesh[]> = {};
+        const uniqueMaterials = new Set();
 
-        // Pass 1: Collect meshes and identify explicit doors
         scene.traverse((child) => {
+            // 1. Material & Shadow Setup (Only for Meshes)
             if (child instanceof Mesh) {
-                // Fix "Dancing Pixels": Force Anisotropy
-                if (child.material) {
-                    const applyAnisotropy = (mat: any) => {
-                        if (mat.map) mat.map.anisotropy = 16;
-                        if (mat.emissiveMap) mat.emissiveMap.anisotropy = 16;
-                        if (mat.normalMap) mat.normalMap.anisotropy = 16;
-                        if (mat.roughnessMap) mat.roughnessMap.anisotropy = 16;
-                        if (mat.metalnessMap) mat.metalnessMap.anisotropy = 16;
-                    };
-
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach(applyAnisotropy);
-                    } else {
-                        applyAnisotropy(child.material);
-                    }
-                }
-
                 child.castShadow = true;
                 child.receiveShadow = true;
-                allMeshes.push(child);
+                if (child.material) {
+                    const mat = Array.isArray(child.material) ? child.material[0] : child.material;
+                    uniqueMaterials.add(mat.name || mat.uuid);
+                    // Fix "Dancing Pixels": Force Anisotropy
+                    if (mat.map) mat.map.anisotropy = 16;
+                    if (mat.emissiveMap) mat.emissiveMap.anisotropy = 16;
+                    if (mat.normalMap) mat.normalMap.anisotropy = 16;
+                    if (mat.roughnessMap) mat.roughnessMap.anisotropy = 16;
+                    if (mat.metalnessMap) mat.metalnessMap.anisotropy = 16;
+                }
+            }
 
-                const company = getCompanyByMesh(child.name);
-                if (company) {
-                    companyMeshes.push(child);
+            // 2. Identification (Check ALL Nodes, e.g. Groups or Meshes)
+            // Debug: Log ANY node with "door" in the name to find missing ones
+            if (child.name.toLowerCase().includes("door")) {
+                console.log("Found Door-like Node:", child.name, child.type);
+            }
+
+            const company = getCompanyByMesh(child.name);
+            if (company) {
+                // Determine if we should treat this node as the visual root for the company
+                // If it's a Mesh, include it in the mesh list for hover/click
+                if (child instanceof Mesh) {
                     if (!meshesByCompany[company.id]) meshesByCompany[company.id] = [];
                     meshesByCompany[company.id].push(child);
-                }
-            }
-        });
 
-        // Pass 2: Proximity check for orphans
-        allMeshes.forEach(child => {
-            let company = getCompanyByMesh(child.name);
-
-            if (!company) {
-                // Check if close to any known door
-                for (const door of companyMeshes) {
-                    if (child.getWorldPosition(new Vector3()).distanceTo(door.getWorldPosition(new Vector3())) < 3.0) {
-                        company = getCompanyByMesh(door.name);
-                        if (company) {
-                            // It's an orphan part of this company
-                            if (!meshesByCompany[company.id]) meshesByCompany[company.id] = [];
-                            meshesByCompany[company.id].push(child);
-
-                            // Hack: Assign name so getCompanyByMesh works on it later (for click handlers)
-                            child.name = door.name;
-                        }
-                        break;
+                    // Save original material for highlight logic
+                    if (!child.userData.originalMaterial) {
+                        child.userData.originalMaterial = child.material;
                     }
                 }
-            }
+                child.userData.companyId = company.id;
 
-            // Interaction optimization: disable raycast for non-company meshes
-            if (!company) {
-                child.raycast = () => { };
-            }
-        });
+                // 3. Anchor Extraction & Hiding
+                // If this node matches the company name, use IT as the anchor.
+                // This covers cases where the "door" is a Group node.
+                if (company.modelFile && !newAnchors[company.id]) {
+                    // Hide this node (and its children)
+                    child.visible = false;
 
-        // Pass 3: Create Invisible Hotspots & Lights centered on the door group
-        Object.entries(meshesByCompany).forEach(([companyId, meshes]) => {
-            if (meshes.length === 0) return;
+                    // Capture World Transform to be safe against nesting
+                    const worldPos = new Vector3();
+                    child.getWorldPosition(worldPos);
 
-            // Calculate Centroid
-            const center = new Vector3();
-            meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
-            center.divideScalar(meshes.length);
+                    const quat = new Quaternion();
+                    child.getWorldQuaternion(quat);
+                    const euler = new Euler().setFromQuaternion(quat);
 
-            // Create Hotspot
-            const hotspotName = `hotspot_${companyId}`;
-            // Check if already exists (safeguard for React strict mode / re-renders)
-            if (!scene.getObjectByName(hotspotName)) {
-                // Invisible Box for clicking the gap
-                const geometry = new BoxGeometry(4, 5, 2); // W:4, H:5, D:2 (covers door + gap)
-                const material = new MeshBasicMaterial({ visible: false }); // Invisible
-                const hotspot = new Mesh(geometry, material);
+                    const worldScale = new Vector3();
+                    child.getWorldScale(worldScale);
 
-                hotspot.name = hotspotName;
-                hotspot.position.copy(center);
-
-                // Also give it a 'DoorGlow' light
-                const light = new PointLight('#ffaa00', 1.5, 12);
-                light.position.set(0, 0, 2); // Offset relative to hotspot center
-                hotspot.add(light);
-
-                scene.add(hotspot);
-
-                hotspot.userData.companyId = companyId;
-                hotspot.userData.isHotspot = true;
+                    newAnchors[company.id] = {
+                        position: worldPos,
+                        rotation: euler,
+                        scale: worldScale
+                    };
+                    console.log(`Phase 2: Found Anchor for ${company.id} on Node "${child.name}"`);
+                } else if (company.modelFile) {
+                    // Already found anchor, just hide this part too if it matches
+                    child.visible = false;
+                }
             }
         });
 
-        // Update ref
+        setAnchors(newAnchors);
         meshesByCompanyRef.current = meshesByCompany;
 
-        // EXIT ANIMATION LOGIC
-        // If we returned from a company page (?exit=ID), snap camera to that door
+        console.log("Phase 2: Loaded Anchors", Object.keys(newAnchors).length);
+        if (Object.keys(newAnchors).length === 0) {
+            console.warn("Phase 2: NO ANCHORS FOUND. Sample Names:", Object.keys(meshesByCompany));
+        }
+
+    }, [scene]);
+
+    // Exit Animation Logic (Snap Camera)
+    useEffect(() => {
         const exitId = searchParams.get('exit');
-        if (exitId && meshesByCompany[exitId] && cameraStateRef && cameraStateRef.current) {
-            const meshes = meshesByCompany[exitId];
+        if (exitId && cameraStateRef?.current && meshesByCompanyRef.current[exitId]) {
+            const meshes = meshesByCompanyRef.current[exitId];
             if (meshes.length > 0) {
-                // Calculate Centroid (Door Position)
+                // Calculate centroid logic...
                 const center = new Vector3();
                 meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
                 center.divideScalar(meshes.length);
 
-                // Calculate "Portal" Position (Camera Start)
-                // Same logic as entry: Move INSIDE (-8.0)
-                const direction = center.clone().normalize();
-                const startPos = center.clone().add(direction.multiplyScalar(-8.0));
+                // Snap camera near it
+                const offset = center.clone().normalize().multiplyScalar(40);
+                const startPos = center.clone().add(offset);
+                startPos.y = Math.max(startPos.y, 10);
 
-                // SNAP CAMERA
                 cameraStateRef.current.pos.copy(startPos);
                 cameraStateRef.current.lookAt.copy(center);
-
-                // Clear the param so it doesn't happen again on refresh? 
-                // Actually, next/navigation router.replace might be good, but maybe overkill.
-                // The animation will drift back anyway.
             }
         }
+    }, [searchParams, cameraStateRef]);
 
-    }, [scene, searchParams]); // Add searchParams dependency
 
-    // Helper to Apply Highlight to ALL meshes of a company
-    const setHighlight = (companyId: string, active: boolean) => {
-        const meshes = meshesByCompanyRef.current[companyId];
-        if (!meshes) return;
+    // Interaction Handlers (Shared)
+    const handleCompanyClick = (e: any, companyId: string) => {
+        e.stopPropagation();
+        const company = getCompanyById(companyId);
+        if (!company) return;
 
-        meshes.forEach((obj) => {
-            // Skip hotspots
-            if (obj.userData.isHotspot) return;
+        // Target Calculation: Centroid of Anchor or Click Point
+        // For new models, e.point on the new model is accurate.
+        // For legacy, we used centroid.
+        // Let's use e.point for precision on the new detailed models.
+        onSelect(company.meshNames[0], e.point);
+    };
 
-            // Ensure we have stored the original material
-            if (!obj.userData.originalMaterial) {
-                obj.userData.originalMaterial = obj.material;
-            }
-
-            if (active) {
-                // Create clone if not exists
-                if (!obj.userData.highlightMaterial) {
-                    const original = obj.userData.originalMaterial;
-                    // Handle array materials (rare but possible) or single
-                    const baseMat = Array.isArray(original) ? original[0] : original;
-
-                    const clone = baseMat.clone();
-                    // Customize the clone for highlight
-                    if (clone.emissive !== undefined) {
-                        clone.emissive = new Color('#ffeebb');
-                        clone.emissiveIntensity = 2.5;
-                    }
-                    obj.userData.highlightMaterial = clone;
-                }
-
-                // Apply the clone
-                obj.material = obj.userData.highlightMaterial;
-            } else {
-                // Revert to original shared material
-                obj.material = obj.userData.originalMaterial;
-            }
-        });
+    const handleCompanyHover = (e: any, companyId: string, hovering: boolean) => {
+        e.stopPropagation();
+        if (hovering) {
+            setHoveredMesh(companyId);
+            document.body.style.cursor = 'pointer';
+            onHover(true);
+            router.prefetch(`/company/${companyId}`);
+        } else {
+            setHoveredMesh(null);
+            document.body.style.cursor = 'auto';
+            onHover(false);
+        }
     };
 
     return (
-        <primitive
-            object={scene}
-            onPointerOver={(e: any) => {
-                e.stopPropagation();
-                // Check name OR userData for hotspot
-                const meshName = e.object.name;
-                const company = getCompanyByMesh(meshName) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
+        <group>
+            {/* The Main Tower Structure (with original doors hidden) */}
+            <primitive
+                object={scene}
+                onClick={(e: any) => {
+                    e.stopPropagation();
+                    const company = getCompanyByMesh(e.object.name) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
+                    if (company) handleCompanyClick(e, company.id);
+                }}
+                onPointerOver={(e: any) => {
+                    e.stopPropagation();
+                    const company = getCompanyByMesh(e.object.name) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
+                    if (company) handleCompanyHover(e, company.id, true);
+                }}
+                onPointerOut={(e: any) => {
+                    e.stopPropagation();
+                    const company = getCompanyByMesh(e.object.name) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
+                    if (company) handleCompanyHover(e, company.id, false);
+                }}
+            />
 
-                if (company) {
-                    setHoveredMesh(company.id); // Use ID for stability
-                    document.body.style.cursor = 'pointer';
-                    onHover(true);
-                    setHighlight(company.id, true);
+            {/* Dynamic Phase 2 Door Models */}
+            {companies.map(company => {
+                const anchor = anchors[company.id];
+                if (!anchor || !company.modelFile) return null;
 
-                    // PREFETCH for smoother transmission
-                    router.prefetch(`/company/${company.id}`);
-                }
-            }}
-            onPointerOut={(e: any) => {
-                e.stopPropagation();
+                // Debug: Log scale to see if it's crazy small
+                // console.log(`Rendering ${company.id} at`, anchor.position, `Scale:`, anchor.scale);
 
-                const meshName = e.object.name;
-                const company = getCompanyByMesh(meshName) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
-
-                if (company) {
-                    setHoveredMesh(null);
-                    document.body.style.cursor = 'auto';
-                    onHover(false);
-                    setHighlight(company.id, false);
-                }
-            }}
-            onClick={(e: any) => {
-                e.stopPropagation();
-                const company = getCompanyByMesh(e.object.name) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
-
-                if (!company) return;
-
-                // FIX: Use Centroid instead of e.point to avoid Hotspot Offset Issues
-                const meshes = meshesByCompanyRef.current[company.id];
-                let targetPoint = e.point;
-
-                if (meshes && meshes.length > 0) {
-                    const center = new Vector3();
-                    meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
-                    center.divideScalar(meshes.length);
-                    targetPoint = center;
-                }
-
-                onSelect(company.meshNames[0], targetPoint);
-            }}
-        />
+                return (
+                    <group
+                        key={company.id}
+                        position={anchor.position}
+                        rotation={anchor.rotation}
+                        // FORCE SCALE 1.0 if the original was weird, or multiply. 
+                        // If original was 0.01 (common in blender), and we use that, new model might be tiny.
+                        // Let's force [1, 1, 1] for now to verify they physically exist.
+                        scale={[1, 1, 1]}
+                        onClick={(e) => handleCompanyClick(e, company.id)}
+                        onPointerOver={(e) => handleCompanyHover(e, company.id, true)}
+                        onPointerOut={(e) => handleCompanyHover(e, company.id, false)}
+                    >
+                        {/* Render the specific optimized GLB for this company */}
+                        <Gltf src={company.modelFile} receiveShadow castShadow />
+                    </group>
+                );
+            })}
+        </group>
     );
 }
-
-useGLTF.preload('/models/colleseum_final.glb');

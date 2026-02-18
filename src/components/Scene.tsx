@@ -1,37 +1,24 @@
 'use client';
 
-// ... (imports remain the same)
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { Environment, PerspectiveCamera, Stars, useProgress } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing';
-import { Suspense, useState, useEffect, useRef } from 'react';
-import { Vector3 } from 'three';
+import { Suspense, useRef, useState, useEffect } from 'react';
+import { Environment, PerspectiveCamera, OrbitControls } from '@react-three/drei';
+
 import Tower from './Tower';
 import Loader from './Loader';
-
-import { getCompanyByMesh } from '../data/companies';
+import { Vector3, MathUtils } from 'three';
 import { useRouter } from 'next/navigation';
+import { getCompanyByMesh } from '../data/companies';
+import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing';
 
-// Hook to detect mobile screen
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-  return isMobile;
-};
-
-// Animated Camera System with Scroll Navigation
 function CinematicCamera({
   targetPos,
   lookAtPos,
   isFocused,
   isHovered,
   isMobile,
-  cameraStateRef
+  cameraStateRef,
+  onArrive
 }: {
   targetPos: Vector3;
   lookAtPos: Vector3;
@@ -39,6 +26,7 @@ function CinematicCamera({
   isHovered: boolean;
   isMobile: boolean;
   cameraStateRef: React.MutableRefObject<{ pos: Vector3; lookAt: Vector3 }>;
+  onArrive?: () => void;
 }) {
   const { camera, gl } = useThree();
   const controlsRef = useRef<any>(null);
@@ -51,6 +39,11 @@ function CinematicCamera({
   const angle = useRef(0.5);
   const targetAngle = useRef(0.5);
 
+  // Touch/Mouse state
+  const touchStartY = useRef(0);
+  const touchStartX = useRef(0);
+  const isDragging = useRef(false);
+
   // Base configuration
   const MAX_HEIGHT = 90;
   // Raised bottom limit from -20 to 5 to stop at the base of the tower
@@ -59,70 +52,108 @@ function CinematicCamera({
   const RADIUS = initialRadius;
 
   useEffect(() => {
+    // Wheel event handler
     const handleWheel = (e: WheelEvent) => {
-      if (isFocused) return; // Disable scroll nav when focused on a door
-
-      // Update target scroll position - Inverted direction for natural feeling
-      // "Mirroring" fix: e.deltaY > 0 (scroll down) should move camera down? 
-      // User said "Direction of scrolling vertical is mirroring". 
-      // Previously: targetScrollY.current += e.deltaY * 0.08; (Scroll down -> Increase Y -> Camera goes UP)
-      // New: targetScrollY.current -= e.deltaY * 0.08; (Scroll down -> Decrease Y -> Camera goes DOWN)
-      targetScrollY.current -= e.deltaY * 0.08;
-
-      // Horizontal scrolling for Rotation
-      // deltaX is usually produced by trackpads or shift+wheel
-      targetAngle.current += e.deltaX * 0.005;
-
-      // Clamp values
-      targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
+      // e.deltaY > 0 means scrolling DOWN -> decrease height
+      // e.deltaY < 0 means scrolling UP -> increase height
+      // Divider controls sensitivity
+      const delta = e.deltaY * 0.05;
+      targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current - delta));
     };
 
-    // Touch handling for mobile
-    let touchStartY = 0;
-    let touchStartX = 0;
+    // Touch event vars
+    // Refs moved to component scope
+
     const handleTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      touchStartX.current = e.touches[0].clientX;
     };
+
     const handleTouchMove = (e: TouchEvent) => {
-      if (isFocused) return;
       const touchY = e.touches[0].clientY;
       const touchX = e.touches[0].clientX;
+      const deltaY = (touchY - touchStartY.current) * 0.15; // Vertical sensitivity
+      const deltaX = (touchX - touchStartX.current); // Raw delta
 
-      const deltaY = touchStartY - touchY;
-      const deltaX = touchStartX - touchX;
-
-      // Invert deltaY effect to match wheel
-      // Drag UP (deltaY positive) -> Scroll DOWN? Or Drag UP -> Scroll UP?
-      // Usually Drag UP = Move Content UP = Camera moves DOWN.
-      // Let's stick to standard "Unnatural" scroll for touch (Drag Up -> Go Down)
-      targetScrollY.current -= deltaY * 0.2;
+      // Vertical Drag -> Scroll
+      targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current + deltaY));
 
       // Horizontal Drag -> Rotate
+      targetAngle.current += deltaX * 0.003;
+
+      targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
+
+      touchStartY.current = touchY;
+      touchStartX.current = touchX;
+    };
+
+    // MOUSE EVENTS (Desktop Support)
+    const handleMouseDown = (e: MouseEvent) => {
+      // Allow clicking on interactive elements (e.g. companies)
+      // Only prevent default if we're clicking background
+      // e.preventDefault(); 
+
+      console.log("Scene: Mouse Down");
+      isDragging.current = true;
+      touchStartY.current = e.clientY;
+      touchStartX.current = e.clientX;
+
+      canvas.style.cursor = 'grabbing';
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      e.preventDefault();
+
+      const deltaY = (e.clientY - touchStartY.current) * 0.15;
+      const deltaX = (e.clientX - touchStartX.current); // Raw delta
+
+      targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current + deltaY));
+
+      // Increased sensitivity (User reported "too slow")
+      // 0.003 -> 0.01 (Approx 3x faster)
       targetAngle.current += deltaX * 0.01;
 
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
 
-      touchStartY = touchY;
-      touchStartX = touchX;
+      touchStartY.current = e.clientY;
+      touchStartX.current = e.clientX;
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      canvas.style.cursor = 'grab';
     };
 
     // Attach to canvas element
     const canvas = gl.domElement;
+    canvas.style.cursor = 'grab'; // Default cursor
+    canvas.style.touchAction = 'none'; // Prevent browser scrolling on mobile
+
     canvas.addEventListener('wheel', handleWheel, { passive: true });
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false }); // non-passive for preventDefault if needed
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    // Add Mouse Listeners
+    canvas.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       canvas.removeEventListener('wheel', handleWheel);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
+
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isFocused, gl]);
 
   useFrame((state, delta) => {
     // Speed up entry animation (0.06 -> 0.1) to ensure we reach the 'inside' position before fade out
-    const step = isFocused ? 0.1 : 0.04;
+    // Tuned: 0.1 is fast.
+    const step = isFocused ? 0.08 : 0.04; // Slightly lower than 0.1 for smoother final approach
     const currentPos = cameraStateRef.current.pos;
     const currentLookAt = cameraStateRef.current.lookAt;
 
@@ -130,14 +161,18 @@ function CinematicCamera({
       // Zoom in to specific door
       currentPos.lerp(targetPos, step);
       currentLookAt.lerp(lookAtPos, step);
+
+      // PROXIMITY CHECK (User Req: "Open only when arrived")
+      // Check distance to target. If very close (< 1.5m), trigger arrival.
+      if (currentPos.distanceTo(targetPos) < 1.5) {
+        if (onArrive) onArrive();
+      }
     } else {
       // Scroll Navigation Mode
 
       // Smoothly interpolate scroll
-      // Smoothly interpolate scroll
-      // Increased lerp factor to 0.5 for almost instant stop (very little drift)
-      // Tuned to 0.25 to reduce stutter/steps while keeping it responsive
-      scrollY.current += (targetScrollY.current - scrollY.current) * 0.25;
+      // FIX: Lowered lerp from 0.25 to 0.1 to match horizontal smoothness (User Req: "screw right/left is smoothing, up/down not")
+      scrollY.current += (targetScrollY.current - scrollY.current) * 0.08;
 
       // Smoothly interpolate angle for fluid rotation
       angle.current += (targetAngle.current - angle.current) * 0.1;
@@ -169,21 +204,25 @@ function CinematicCamera({
   );
 }
 
-
-
 export default function Scene() {
   const router = useRouter();
-  const isMobile = useIsMobile();
+  const websiteOpened = useRef(false);
 
-  const [cameraTarget, setCameraTarget] = useState(new Vector3(60, 30, 60));
-  const [lookTarget, setLookTarget] = useState(new Vector3(0, 10, 0));
+  // Transition State for Overlay
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const [cameraTarget, setCameraTarget] = useState(new Vector3(0, 0, 0));
+  const [lookTarget, setLookTarget] = useState(new Vector3(0, 0, 0));
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Use a ref to track if we've already opened the website for the current selection
-  // Also using a state to force re-render for the overlay since ref changes don't trigger render
-  const websiteOpened = useRef(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Shared Camera State for smooth transitions & exit animations
   const initialRadius = isMobile ? 150 : 110;
@@ -214,18 +253,24 @@ export default function Scene() {
       setIsFocused(true);
 
       // REDIRECT LOGIC
-      // Wait for camera to actually get close before pushing
-      // We'll use a timeout as a fail-safe, but usually the animation takes ~1-1.5s
+      // Handled by onArrive callback in CinematicCamera
       if (company.id) {
-        // Trigger fade out slightly before push
-        setTimeout(() => {
-          setIsTransitioning(true); // Trigger fade to black
-        }, 800);
-
-        setTimeout(() => {
-          router.push(`/company/${company.id}`);
-        }, 1200); // Tuned for arrival
+        setPendingRedirect(company.id);
       }
+    }
+  };
+
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
+
+  const handleArrival = () => {
+    if (pendingRedirect && !websiteOpened.current) {
+      websiteOpened.current = true;
+      setIsTransitioning(true); // Fade out
+
+      // Wait for fade (700ms) then push
+      setTimeout(() => {
+        router.push(`/company/${pendingRedirect}`);
+      }, 700);
     }
   };
 
@@ -259,65 +304,50 @@ export default function Scene() {
           isHovered={isHovered}
           isMobile={isMobile}
           cameraStateRef={cameraStateRef}
+          onArrive={handleArrival}
         />
 
         {/* Improved Lighting Setup - Premium Contrast & Balance */}
         {/* Ambient: Increased intensity to fill "Dark" spots. Cool Moonlight. */}
         <ambientLight intensity={0.7} color="#b0c4de" />
 
-        {/* Spot: Warm Gold Key Light to highlight the structure */}
-        {/* Reduced mapSize to 512 for performance */}
-        <spotLight
-          position={[50, 80, 50]}
-          angle={0.25}
-          penumbra={1}
-          intensity={1.8}
-          color="#ffd700"
-          castShadow={!isMobile} // Disable shadow casting on mobile
-          shadow-mapSize={[512, 512]}
-          shadow-bias={-0.0001}
+        {/* Main Directional Light (Moonlight/City Light) */}
+        {/* Repositioned for more dramatic shadows (side lighting) */}
+        <directionalLight
+          position={[50, 80, 40]}
+          intensity={1.2}
+          color="#ffffff"
+          castShadow={false}
         />
-        {/* Rim Light: Subtle warm glow from opposite side */}
-        <pointLight position={[-40, 30, -40]} intensity={1.0} color="#ffaa00" distance={100} />
-        {/* Fill Light: Stronger Cool blue to fill shadows on the dark side */}
-        <pointLight position={[40, 0, 40]} intensity={0.8} color="#4682b4" distance={100} />
 
-        <Environment preset="city" blur={0.6} background={false} />
+        {/* Rim Light for edge definition on the tower */}
+        <spotLight
+          position={[-50, 60, -50]}
+          intensity={2.0}
+          color="#a0c0ff"
+          angle={0.5}
+          penumbra={1}
+          castShadow={false}
+        />
 
-        {/* Optimization: Reduce star count significantly */}
-        <Stars radius={300} depth={60} count={3000} factor={4} saturation={0} fade speed={0.5} />
+        {/* Model */}
+        <Tower
+          onSelect={handleSelect}
+          onHover={setIsHovered}
+          cameraStateRef={cameraStateRef}
+        />
 
-        <Suspense fallback={null}>
-          <Tower onSelect={handleSelect} onHover={setIsHovered} cameraStateRef={cameraStateRef} />
-        </Suspense>
+        <Environment preset="night" blur={0.8} background={false} />
 
-        {/* Post Processing: ONLY on Desktop. Too heavy for mobile web in some cases. */}
-        {!isMobile && (
-          <EffectComposer enableNormalPass={false} multisampling={0}>
-            <SMAA />
-            <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
-            <Vignette eskil={false} offset={0.1} darkness={0.5} />
-          </EffectComposer>
-        )}
-
+        {/* Post Processing: SMAA for Anti-Aliasing (Fix Dancing Pixels) */}
+        <EffectComposer enableNormalPass={false} multisampling={0}>
+          <SMAA />
+          <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
+          <Vignette eskil={false} offset={0.1} darkness={0.5} />
+        </EffectComposer>
       </Canvas>
-      <div className={`absolute top-0 left-0 p-6 md:p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
-        <div className="space-y-1">
-          <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] text-[#d4af37] font-bold">
-            Corporate Interactive Experience
-          </p>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-black tracking-tighter">
-            TOWER<span className="text-[#d4af37]">.</span>
-          </h1>
-        </div>
-        <div className="mt-4 md:mt-6 flex items-center space-x-4">
-          <div className="h-[1px] w-8 md:w-12 bg-[#d4af37]/50"></div>
-          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-gray-400 font-light">
-            {isMobile ? 'Tap Company to Enter' : 'Select Company to Enter'}
-          </p>
-        </div>
-      </div>
+
+      {/* UI Overlay for Back/Instructions can go here */}
     </div>
   );
 }
-

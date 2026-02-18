@@ -1,3 +1,16 @@
+// Available Phase 2 Models
+const DOOR_MODELS = [
+    '/models/doors/OP1.glb',
+    '/models/doors/OP3.glb',
+    '/models/doors/OP4.glb',
+    '/models/doors/PWR1.glb',
+    '/models/doors/PWR3.glb',
+    '/models/doors/PWR4.glb',
+    '/models/doors/SP1.glb',
+    '/models/doors/SP3.glb',
+    '/models/doors/SP4.glb'
+];
+
 export interface Company {
     id: string;
     name: string;
@@ -6,12 +19,23 @@ export interface Company {
     logo: string;
     meshNames: string[];
     website?: string;
+    modelFile?: string; // New field for Phase 2 models
     content?: {
         title?: string;
         body: string | string[];
         list?: string[];
     }[];
 }
+
+// Helper to get deterministic random model based on ID
+const getModelForId = (id: string) => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % DOOR_MODELS.length;
+    return DOOR_MODELS[index];
+};
 
 export const companies: Company[] = [
     {
@@ -20,8 +44,9 @@ export const companies: Company[] = [
         description: "A Driver of Development and a Symbol of Trust.",
         fullDescription: "Arabian Holding Group is one of Iraq's leading companies...",
         logo: "/logos/Arabian Holding Group – Iraq.png",
-        meshNames: ["door upper11", "door upper11.001", "door upper11.002", "door upper11.003"],
+        meshNames: ["door25"], // Remapped from missing "door upper11"
         website: "https://arabianholdinggroup.com",
+        modelFile: getModelForId("arabian_holding_group"),
         content: [
             {
                 title: "A Driver of Development and a Symbol of Trust",
@@ -65,8 +90,9 @@ export const companies: Company[] = [
         name: "Mawaraa Al-Bihar General Trading",
         description: "Comprehensive trading and commercial agencies.",
         logo: "/logos/Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd..png",
-        meshNames: ["door upper12"],
+        meshNames: ["door26"], // Remapped from missing "door upper12"
         website: "https://mawaraa-albihar.com",
+        modelFile: getModelForId("mawaraa_al_bihar"),
         content: [
             {
                 title: "Comprehensive Overview",
@@ -126,8 +152,9 @@ export const companies: Company[] = [
         name: "Al-Irtikaz Company",
         description: "Artistic production, marketing, and technical services.",
         logo: "/logos/Al-Irtikaz Company.png",
-        meshNames: ["door upper13"],
+        meshNames: ["door25"], // Shared anchor due to missing nodes
         website: "https://alirtikaz.com",
+        modelFile: getModelForId("al_irtikaz"),
         content: [
             {
                 title: "Overview",
@@ -164,8 +191,9 @@ export const companies: Company[] = [
         name: "Nidaa Al-Ard Company",
         description: "Agricultural investments and general trading.",
         logo: "/logos/Nidaa Al-Ard Company.png",
-        meshNames: ["door upper14"],
+        meshNames: ["door26"], // Shared anchor
         website: "https://nidaa-alard.com",
+        modelFile: getModelForId("nidaa_al_ard"),
         content: [
             {
                 title: "Introduction",
@@ -199,8 +227,9 @@ export const companies: Company[] = [
         name: "Al-Takween Commercial Agencies",
         description: "Your trusted partner in commercial agencies and marketing.",
         logo: "/logos/Al-Takween Commercial Agencies Company.png",
-        meshNames: ["door2 upper", "door2 upper.001", "door2 upper.002", "door2 upper.003", "door2 upper.004", "door2 upper.005", "door2 upper.006"],
+        meshNames: ["door27"], // Shared with Al-Arabiya
         website: "https://altakween.com",
+        modelFile: getModelForId("al_takween"),
         content: [
             {
                 title: "Establishment and Legal Identity",
@@ -241,6 +270,7 @@ export const companies: Company[] = [
         logo: "/logos/Al-Arabiya International company.png",
         meshNames: ["door27"],
         website: "https://alarabiya-international.com",
+        modelFile: getModelForId("al_arabiya_international"),
         content: [
             {
                 title: "Company Overview",
@@ -273,6 +303,7 @@ export const companies: Company[] = [
         logo: "/logos/Al-Zawraa Company for Audio-Visual Broadcasting, Advertising, Publishing, Distribution, and Marketing.png",
         meshNames: ["door17"],
         website: "https://alzawraa.com",
+        modelFile: getModelForId("al_zawraa"),
         content: [
             {
                 title: "Establishment and Identity",
@@ -305,6 +336,7 @@ export const companies: Company[] = [
         logo: "/logos/Al-Tawasul Economic Services Company.png",
         meshNames: ["door11"],
         website: "https://altawasul.com",
+        modelFile: getModelForId("al_tawasul"),
         content: [
             {
                 title: "Overview",
@@ -333,6 +365,7 @@ export const companies: Company[] = [
         logo: "/logos/Dazly General Trading & E-Commerce Company.png",
         meshNames: ["door12"],
         website: "https://dazly.com",
+        modelFile: getModelForId("dazly"),
         content: [
             {
                 title: "Executive Summary",
@@ -359,6 +392,7 @@ export const companies: Company[] = [
         logo: "/logos/Arkan Al-Dar Company.png",
         meshNames: ["door13"],
         website: "https://arkan-aldar.com",
+        modelFile: getModelForId("arkan_al_dar"),
         content: [
             {
                 title: "Company Overview",
@@ -386,6 +420,7 @@ export const companies: Company[] = [
         logo: "/logos/Ameer Al-Middle East Company.png",
         meshNames: ["door14"],
         website: "https://ameer-middleeast.com",
+        modelFile: getModelForId("ameer_al_middle_east"),
         content: [
             {
                 title: "Overview",
@@ -407,6 +442,7 @@ export const companies: Company[] = [
         logo: "/logos/Al-Tamaddon Company for Real Estate Investment and Development.png",
         meshNames: ["door15"],
         website: "https://altamaddon.com",
+        modelFile: getModelForId("al_tamaddon"),
         content: [
             {
                 title: "Introduction",
@@ -432,6 +468,7 @@ export const companies: Company[] = [
         logo: "/logos/Imkanat Development Company.png",
         meshNames: ["door16"],
         website: "https://imkanat.com",
+        modelFile: getModelForId("imkanat"),
         content: [
             {
                 title: "Introduction",
@@ -460,6 +497,7 @@ export const companies: Company[] = [
         logo: "/logos/Baghdad Wings Airline.png",
         meshNames: ["door21"],
         website: "https://baghdadwings.com",
+        modelFile: getModelForId("baghdad_wings"),
         content: [
             {
                 title: "Establishment and Identity",
@@ -485,6 +523,7 @@ export const companies: Company[] = [
         logo: "/logos/INMOBILES – FZCO.png",
         meshNames: ["door22"],
         website: "https://inmobiles.com",
+        modelFile: getModelForId("inmobiles"),
         content: [
             {
                 title: "Introduction",
@@ -509,6 +548,7 @@ export const companies: Company[] = [
         logo: "/logos/Iraqi Insurance Union.png",
         meshNames: ["door23"],
         website: "https://iraqiinsurance.com",
+        modelFile: getModelForId("iraqi_insurance"),
         content: [
             {
                 title: "Overview",
@@ -533,6 +573,7 @@ export const companies: Company[] = [
         logo: "/logos/HIMMATI General Trading Company.png",
         meshNames: ["door24"],
         website: "https://himmati.com",
+        modelFile: getModelForId("himmati"),
         content: [
             {
                 title: "Introduction",
