@@ -212,6 +212,9 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
             object={scene}
             onPointerOver={(e: any) => {
                 e.stopPropagation();
+                // EXPENSIVE OPERATION: Disable hover on mobile to prevent re-renders during scroll
+                if (isMobile) return;
+
                 // Check name OR userData for hotspot
                 const meshName = e.object.name;
                 const company = getCompanyByMesh(meshName) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
@@ -228,6 +231,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
             }}
             onPointerOut={(e: any) => {
                 e.stopPropagation();
+                if (isMobile) return;
 
                 const meshName = e.object.name;
                 const company = getCompanyByMesh(meshName) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
