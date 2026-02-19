@@ -67,8 +67,10 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                     }
                 }
 
-                child.castShadow = true;
-                child.receiveShadow = true;
+                if (!isMobile) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
                 allMeshes.push(child);
 
                 const company = getCompanyByMesh(child.name);

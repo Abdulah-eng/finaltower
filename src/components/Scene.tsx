@@ -241,9 +241,13 @@ export default function Scene() {
       />
 
       <Canvas
-        shadows={false} // Mont-Fort Style: No real-time shadows for max FPS
-        dpr={isMobile ? [1, 1.25] : [1, 2]} // Reduced max DPR for mobile (1.5 -> 1.25)
-        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+        shadows={!isMobile} // Disable shadow map entirely on mobile
+        dpr={isMobile ? 1 : [1, 2]} // Cap DPR at 1.0 for mobile (Battery/Performance saver)
+        gl={{
+          antialias: !isMobile, // Disable MSAA on mobile for slight perf boost
+          alpha: false,
+          powerPreference: "high-performance"
+        }}
       >
         {/* Skybox-ish background instead of black void */}
         {/* Premium Dusk: Deep Slate Blue used for a cohesive, rich night look */}
@@ -277,10 +281,16 @@ export default function Scene() {
           shadow-mapSize={[512, 512]}
           shadow-bias={-0.0001}
         />
-        {/* Rim Light: Subtle warm glow from opposite side */}
-        <pointLight position={[-40, 30, -40]} intensity={1.0} color="#ffaa00" distance={100} />
-        {/* Fill Light: Stronger Cool blue to fill shadows on the dark side */}
-        <pointLight position={[40, 0, 40]} intensity={0.8} color="#4682b4" distance={100} />
+
+        {/* Secondary Lights: Desktop Only */}
+        {!isMobile && (
+          <>
+            {/* Rim Light: Subtle warm glow from opposite side */}
+            <pointLight position={[-40, 30, -40]} intensity={1.0} color="#ffaa00" distance={100} />
+            {/* Fill Light: Stronger Cool blue to fill shadows on the dark side */}
+            <pointLight position={[40, 0, 40]} intensity={0.8} color="#4682b4" distance={100} />
+          </>
+        )}
 
         <Environment preset="city" blur={0.6} background={false} />
 
