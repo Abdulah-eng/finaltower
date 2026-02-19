@@ -63,14 +63,9 @@ function CinematicCamera({
       if (isFocused) return; // Disable scroll nav when focused on a door
 
       // Update target scroll position - Inverted direction for natural feeling
-      // "Mirroring" fix: e.deltaY > 0 (scroll down) should move camera down? 
-      // User said "Direction of scrolling vertical is mirroring". 
-      // Previously: targetScrollY.current += e.deltaY * 0.08; (Scroll down -> Increase Y -> Camera goes UP)
-      // New: targetScrollY.current -= e.deltaY * 0.08; (Scroll down -> Decrease Y -> Camera goes DOWN)
       targetScrollY.current -= e.deltaY * 0.08;
 
       // Horizontal scrolling for Rotation
-      // deltaX is usually produced by trackpads or shift+wheel
       targetAngle.current += e.deltaX * 0.005;
 
       // Clamp values
@@ -86,6 +81,9 @@ function CinematicCamera({
     };
     const handleTouchMove = (e: TouchEvent) => {
       if (isFocused) return;
+      // Prevent default to stop browser overscroll/refresh effects which cause "glitchy" feeling
+      if (e.cancelable) e.preventDefault();
+
       const touchY = e.touches[0].clientY;
       const touchX = e.touches[0].clientX;
 
@@ -96,10 +94,12 @@ function CinematicCamera({
       // Drag UP (deltaY positive) -> Scroll DOWN? Or Drag UP -> Scroll UP?
       // Usually Drag UP = Move Content UP = Camera moves DOWN.
       // Let's stick to standard "Unnatural" scroll for touch (Drag Up -> Go Down)
-      targetScrollY.current -= deltaY * 0.2;
+      // REDUCED SENSITIVITY for Mobile (0.2 -> 0.15)
+      targetScrollY.current -= deltaY * 0.15;
 
       // Horizontal Drag -> Rotate
-      targetAngle.current += deltaX * 0.01;
+      // REDUCED SENSITIVITY (0.01 -> 0.008)
+      targetAngle.current += deltaX * 0.008;
 
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
 
@@ -109,9 +109,11 @@ function CinematicCamera({
 
     // Attach to canvas element
     const canvas = gl.domElement;
+    // Mobile Chrome often treats passive: true as default, but we need preventDefault to stop scroll
+    // So we must set passive: false for touchmove
     canvas.addEventListener('wheel', handleWheel, { passive: true });
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
       canvas.removeEventListener('wheel', handleWheel);
@@ -137,10 +139,14 @@ function CinematicCamera({
       // Smoothly interpolate scroll
       // Increased lerp factor to 0.5 for almost instant stop (very little drift)
       // Tuned to 0.25 to reduce stutter/steps while keeping it responsive
-      scrollY.current += (targetScrollY.current - scrollY.current) * 0.25;
+      // MOBILE: Lower lerp (0.1) for "heavier"/smoother feeling to hide micro-jitters
+      const scrollLerp = isMobile ? 0.1 : 0.25;
+      scrollY.current += (targetScrollY.current - scrollY.current) * scrollLerp;
 
       // Smoothly interpolate angle for fluid rotation
-      angle.current += (targetAngle.current - angle.current) * 0.1;
+      // MOBILE: Lower lerp (0.05) for smoother rotation
+      const angleLerp = isMobile ? 0.05 : 0.1;
+      angle.current += (targetAngle.current - angle.current) * angleLerp;
 
       // Calculate orbiting position based on accumulated angle and scroll height
       // Only rotate if not hovered and not focused
