@@ -122,6 +122,10 @@ function CinematicCamera({
     };
   }, [isFocused, gl]);
 
+  // Reusable vectors to prevent GC stutter
+  const orbitPos = useRef(new Vector3());
+  const orbitLookAt = useRef(new Vector3());
+
   useFrame((state, delta) => {
     // Speed up entry animation (0.06 -> 0.1) to ensure we reach the 'inside' position before fade out
     const step = isFocused ? 0.1 : 0.04;
@@ -136,9 +140,6 @@ function CinematicCamera({
       // Scroll Navigation Mode
 
       // Smoothly interpolate scroll
-      // Smoothly interpolate scroll
-      // Increased lerp factor to 0.5 for almost instant stop (very little drift)
-      // Tuned to 0.25 to reduce stutter/steps while keeping it responsive
       // MOBILE: Lower lerp (0.1) for "heavier"/smoother feeling to hide micro-jitters
       const scrollLerp = isMobile ? 0.1 : 0.25;
       scrollY.current += (targetScrollY.current - scrollY.current) * scrollLerp;
@@ -148,22 +149,15 @@ function CinematicCamera({
       const angleLerp = isMobile ? 0.05 : 0.1;
       angle.current += (targetAngle.current - angle.current) * angleLerp;
 
-      // Calculate orbiting position based on accumulated angle and scroll height
-      // Only rotate if not hovered and not focused
-      // On mobile, maybe auto-rotate slowly even if hovered? No, keep consistent.
-      // Automatic rotation ONLY if no user input? removed for now to give control.
-      /* if (!isHovered) {
-         angle.current += delta * 0.05; 
-      } */
-
       const x = Math.sin(angle.current) * RADIUS;
       const z = Math.cos(angle.current) * RADIUS;
 
-      const orbitPos = new Vector3(x, scrollY.current, z);
-      const orbitLookAt = new Vector3(0, scrollY.current * 0.6, 0);
+      // Update reusable vectors instead of creating new ones
+      orbitPos.current.set(x, scrollY.current, z);
+      orbitLookAt.current.set(0, scrollY.current * 0.6, 0);
 
-      currentPos.lerp(orbitPos, step);
-      currentLookAt.lerp(orbitLookAt, step);
+      currentPos.lerp(orbitPos.current, step);
+      currentLookAt.lerp(orbitLookAt.current, step);
     }
 
     camera.position.copy(currentPos);
@@ -248,7 +242,7 @@ export default function Scene() {
 
       <Canvas
         shadows={false} // Mont-Fort Style: No real-time shadows for max FPS
-        dpr={isMobile ? [1, 1.5] : [1, 2]} // Use reasonable DPR limits
+        dpr={isMobile ? [1, 1.25] : [1, 2]} // Reduced max DPR for mobile (1.5 -> 1.25)
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       >
         {/* Skybox-ish background instead of black void */}
@@ -291,7 +285,8 @@ export default function Scene() {
         <Environment preset="city" blur={0.6} background={false} />
 
         {/* Optimization: Reduce star count significantly */}
-        <Stars radius={300} depth={60} count={3000} factor={4} saturation={0} fade speed={0.5} />
+        {/* Optimization: Disable Stars on mobile completely to save draw calls */}
+        {!isMobile && <Stars radius={300} depth={60} count={3000} factor={4} saturation={0} fade speed={0.5} />}
 
         <Suspense fallback={null}>
           <Suspense fallback={null}>
