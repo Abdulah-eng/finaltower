@@ -81,13 +81,19 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                     if (!isMobile && company.doorModel && company.meshNames.includes(child.name)) {
                         if (child.name === company.meshNames[0]) {
                             child.visible = false; // Hide original
-                            newCustomDoors.push({
-                                id: company.id,
-                                modelId: company.doorModel,
-                                position: child.getWorldPosition(new Vector3()), // Use World Position
-                                rotation: child.rotation.clone(),
-                                scale: child.scale.clone()
-                            });
+
+                            // Prevent duplicates: Only add one door per company
+                            // (In case multiple meshes share the same name or logic triggers twice)
+                            const isDuplicate = newCustomDoors.some(d => d.id === company.id);
+                            if (!isDuplicate) {
+                                newCustomDoors.push({
+                                    id: company.id,
+                                    modelId: company.doorModel,
+                                    position: child.getWorldPosition(new Vector3()), // Use World Position
+                                    rotation: child.rotation.clone(),
+                                    scale: child.scale.clone()
+                                });
+                            }
                         } else {
                             child.visible = false;
                         }
