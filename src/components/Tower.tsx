@@ -1,7 +1,7 @@
 'use client';
 
 import { useGLTF } from '@react-three/drei';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
 import { getCompanyByMesh, getCompanyById } from '../data/companies';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -21,7 +21,10 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
     // Mobile: Load 512px textured, simplified model
     // Desktop: Load full quality
     const modelPath = isMobile ? '/models/colleseum_mobile.glb' : '/models/colleseum_final.glb';
-    const { scene } = useGLTF(modelPath);
+    const gltf = useGLTF(modelPath);
+    // CLONE SCENE to avoid polluting the global cache with our modifications (hotspots, hidden meshes)
+    // This ensures every visit starts fresh.
+    const scene = useMemo(() => gltf.scene.clone(), [gltf.scene]);
 
     const [customDoors, setCustomDoors] = useState<{ id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[]>([]);
 
