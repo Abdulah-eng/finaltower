@@ -161,25 +161,6 @@ export default function Tower({ onSelect, onHover, cameraStateRef }: TowerProps)
             }
         }
 
-        // CLEANUP: Dispose Hotspots to prevent memory leaks (User Req 5)
-        return () => {
-            Object.keys(meshesByCompany).forEach(companyId => {
-                const hotspotName = `hotspot_${companyId}`;
-                const hotspot = scene.getObjectByName(hotspotName) as Mesh;
-                if (hotspot) {
-                    scene.remove(hotspot);
-                    if (hotspot.geometry) hotspot.geometry.dispose();
-                    if (hotspot.material) {
-                        if (Array.isArray(hotspot.material)) {
-                            hotspot.material.forEach(m => m.dispose());
-                        } else {
-                            hotspot.material.dispose();
-                        }
-                    }
-                }
-            });
-        };
-
     }, [scene, searchParams]);
 
     // Helper to Apply Highlight to ALL meshes of a company

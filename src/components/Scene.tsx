@@ -31,8 +31,7 @@ function CinematicCamera({
   isFocused,
   isHovered,
   isMobile,
-  cameraStateRef,
-  onArrive
+  cameraStateRef
 }: {
   targetPos: Vector3;
   lookAtPos: Vector3;
@@ -40,7 +39,6 @@ function CinematicCamera({
   isHovered: boolean;
   isMobile: boolean;
   cameraStateRef: React.MutableRefObject<{ pos: Vector3; lookAt: Vector3 }>;
-  onArrive: () => void;
 }) {
   const { camera, gl } = useThree();
   const controlsRef = useRef<any>(null);
@@ -132,25 +130,14 @@ function CinematicCamera({
       // Zoom in to specific door
       currentPos.lerp(targetPos, step);
       currentLookAt.lerp(lookAtPos, step);
-
-      // DISTANCE-BASED TRIGGER (User Req 6)
-      // Only open page when "arrived" (distance < 0.5 or similar threshold)
-      if (currentPos.distanceTo(targetPos) < 1.0) {
-        // We can assume "arrived".
-        // Triggers are handled via props if needed, but for now we just let the parent's timeout logic work?
-        // NO, user explicitly said "Timeout is wrong".
-        // We need to signal "Arrived".
-        // Let's modify the component to accept onArrive callback.
-        onArrive(); // Trigger the arrival callback
-      }
     } else {
       // Scroll Navigation Mode
 
       // Smoothly interpolate scroll
       // Smoothly interpolate scroll
       // Increased lerp factor to 0.5 for almost instant stop (very little drift)
-      // Tuned to 0.1 to match horizontal rotation smoothness ("Right-left smooth, up-down not smooth")
-      scrollY.current += (targetScrollY.current - scrollY.current) * 0.1;
+      // Tuned to 0.25 to reduce stutter/steps while keeping it responsive
+      scrollY.current += (targetScrollY.current - scrollY.current) * 0.25;
 
       // Smoothly interpolate angle for fluid rotation
       angle.current += (targetAngle.current - angle.current) * 0.1;
@@ -178,7 +165,7 @@ function CinematicCamera({
   });
 
   return (
-    <PerspectiveCamera makeDefault position={[110, 40, 110]} fov={isMobile ? 45 : 32} near={0.5} />
+    <PerspectiveCamera makeDefault position={[110, 40, 110]} fov={isMobile ? 45 : 32} />
   );
 }
 
@@ -192,7 +179,6 @@ export default function Scene() {
   const [lookTarget, setLookTarget] = useState(new Vector3(0, 10, 0));
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   // Use a ref to track if we've already opened the website for the current selection
   // Also using a state to force re-render for the overlay since ref changes don't trigger render
@@ -227,9 +213,18 @@ export default function Scene() {
       setLookTarget(worldPos);
       setIsFocused(true);
 
+      // REDIRECT LOGIC
+      // Wait for camera to actually get close before pushing
+      // We'll use a timeout as a fail-safe, but usually the animation takes ~1-1.5s
       if (company.id) {
-        setSelectedCompanyId(company.id);
-        // Old timeouts removed in favor of onArrive check in CinematicCamera
+        // Trigger fade out slightly before push
+        setTimeout(() => {
+          setIsTransitioning(true); // Trigger fade to black
+        }, 800);
+
+        setTimeout(() => {
+          router.push(`/company/${company.id}`);
+        }, 1200); // Tuned for arrival
       }
     }
   };
@@ -247,7 +242,7 @@ export default function Scene() {
 
       <Canvas
         shadows={false} // Mont-Fort Style: No real-time shadows for max FPS
-        dpr={[1, 1.5]} // User Req: "Limit Pixel Ratio to 1.5" - Massive perf boost
+        dpr={isMobile ? [1, 1.5] : [1, 2]} // Use reasonable DPR limits
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       >
         {/* Skybox-ish background instead of black void */}
@@ -264,17 +259,6 @@ export default function Scene() {
           isHovered={isHovered}
           isMobile={isMobile}
           cameraStateRef={cameraStateRef}
-          onArrive={() => {
-            // TRANSITION TRIGGER (User Req 6)
-            // Only happens when camera is < 1.0m from target (inside door)
-            if (!isTransitioning && websiteOpened.current === false && selectedCompanyId) {
-              websiteOpened.current = true; // Prevent double trigger
-              setIsTransitioning(true);
-              setTimeout(() => {
-                router.push(`/company/${selectedCompanyId}`);
-              }, 400); // Short delay for fade effect
-            }
-          }}
         />
 
         {/* Improved Lighting Setup - Premium Contrast & Balance */}
@@ -307,14 +291,14 @@ export default function Scene() {
           <Tower onSelect={handleSelect} onHover={setIsHovered} cameraStateRef={cameraStateRef} />
         </Suspense>
 
-        {/* Post Processing: DISABLED for Performance ("Still too heavy") */}
-        {/* {!isMobile && (
+        {/* Post Processing: ONLY on Desktop. Too heavy for mobile web in some cases. */}
+        {!isMobile && (
           <EffectComposer enableNormalPass={false} multisampling={0}>
             <SMAA />
             <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
             <Vignette eskil={false} offset={0.1} darkness={0.5} />
           </EffectComposer>
-        )} */}
+        )}
 
       </Canvas>
       <div className={`absolute top-0 left-0 p-6 md:p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
