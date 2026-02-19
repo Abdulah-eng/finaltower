@@ -10,13 +10,17 @@ interface TowerProps {
     onSelect: (name: string, position?: Vector3) => void;
     onHover: (hovered: boolean) => void;
     cameraStateRef?: React.MutableRefObject<{ pos: Vector3; lookAt: Vector3 } | null>;
+    isMobile?: boolean;
 }
 
-export default function Tower({ onSelect, onHover, cameraStateRef }: TowerProps) {
+export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = false }: TowerProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    // OPTIMIZED MODEL: ~8.2MB (Draco + 1024px Textures)
-    const { scene } = useGLTF('/models/colleseum_final.glb');
+    // OPTIMIZED MODEL LOAD:
+    // Mobile: Load 512px textured, simplified model
+    // Desktop: Load full quality
+    const modelPath = isMobile ? '/models/colleseum_mobile.glb' : '/models/colleseum_final.glb';
+    const { scene } = useGLTF(modelPath);
 
     // Debug: Check distinct materials
     useEffect(() => {
@@ -46,7 +50,8 @@ export default function Tower({ onSelect, onHover, cameraStateRef }: TowerProps)
         scene.traverse((child) => {
             if (child instanceof Mesh) {
                 // Fix "Dancing Pixels": Force Anisotropy
-                if (child.material) {
+                // EXPENSIVE OPERATION: DISABLE ON MOBILE
+                if (!isMobile && child.material) {
                     const applyAnisotropy = (mat: any) => {
                         if (mat.map) mat.map.anisotropy = 16;
                         if (mat.emissiveMap) mat.emissiveMap.anisotropy = 16;
@@ -257,4 +262,6 @@ export default function Tower({ onSelect, onHover, cameraStateRef }: TowerProps)
     );
 }
 
+// Preload both variants
 useGLTF.preload('/models/colleseum_final.glb');
+useGLTF.preload('/models/colleseum_mobile.glb');

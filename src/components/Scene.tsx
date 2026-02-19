@@ -288,7 +288,9 @@ export default function Scene() {
         <Stars radius={300} depth={60} count={3000} factor={4} saturation={0} fade speed={0.5} />
 
         <Suspense fallback={null}>
-          <Tower onSelect={handleSelect} onHover={setIsHovered} cameraStateRef={cameraStateRef} />
+          <Suspense fallback={null}>
+            <Tower onSelect={handleSelect} onHover={setIsHovered} cameraStateRef={cameraStateRef} isMobile={isMobile} />
+          </Suspense>
         </Suspense>
 
         {/* Post Processing: ONLY on Desktop. Too heavy for mobile web in some cases. */}
