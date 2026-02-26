@@ -41,7 +41,6 @@ function CinematicCamera({
   cameraStateRef: React.MutableRefObject<{ pos: Vector3; lookAt: Vector3 }>;
 }) {
   const { camera, gl } = useThree();
-  const controlsRef = useRef<any>(null);
 
   // Scroll state
   const scrollY = useRef(90); // Start at MAX_HEIGHT (Top)
@@ -51,9 +50,12 @@ function CinematicCamera({
   const angle = useRef(0.5);
   const targetAngle = useRef(0.5);
 
+  // Mouse drag state
+  const isDragging = useRef(false);
+  const lastMouseX = useRef(0);
+
   // Base configuration
   const MAX_HEIGHT = 90;
-  // Raised bottom limit from -20 to 5 to stop at the base of the tower
   const MIN_HEIGHT = 5;
   const initialRadius = isMobile ? 150 : 110;
   const RADIUS = initialRadius;
@@ -65,11 +67,34 @@ function CinematicCamera({
       // Update target scroll position - Inverted direction for natural feeling
       targetScrollY.current -= e.deltaY * 0.08;
 
-      // Horizontal scrolling for Rotation
+      // Horizontal scrolling for Rotation (Trackpad horizontal scroll)
       targetAngle.current += e.deltaX * 0.005;
 
       // Clamp values
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
+    };
+
+    // Mouse drag handlers
+    const handleMouseDown = (e: MouseEvent) => {
+      if (isFocused) return;
+      isDragging.current = true;
+      lastMouseX.current = e.clientX;
+      document.body.style.cursor = 'grabbing';
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || isFocused) return;
+
+      const deltaX = e.clientX - lastMouseX.current;
+      // Drag Horizontal -> Rotate camera around the tower
+      // We use a negative multiplier so dragging RIGHT (positive deltaX) rotates camera LEFT 
+      targetAngle.current -= deltaX * 0.008;
+      lastMouseX.current = e.clientX;
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = 'auto';
     };
 
     // Touch handling for mobile
@@ -81,7 +106,6 @@ function CinematicCamera({
     };
     const handleTouchMove = (e: TouchEvent) => {
       if (isFocused) return;
-      // Prevent default to stop browser overscroll/refresh effects which cause "glitchy" feeling
       if (e.cancelable) e.preventDefault();
 
       const touchY = e.touches[0].clientY;
@@ -90,17 +114,8 @@ function CinematicCamera({
       const deltaY = touchStartY - touchY;
       const deltaX = touchStartX - touchX;
 
-      // Invert deltaY effect to match wheel
-      // Drag UP (deltaY positive) -> Scroll DOWN? Or Drag UP -> Scroll UP?
-      // Usually Drag UP = Move Content UP = Camera moves DOWN.
-      // Let's stick to standard "Unnatural" scroll for touch (Drag Up -> Go Down)
-      // REDUCED SENSITIVITY for Mobile (0.2 -> 0.15)
       targetScrollY.current -= deltaY * 0.15;
-
-      // Horizontal Drag -> Rotate
-      // REDUCED SENSITIVITY (0.01 -> 0.008)
       targetAngle.current += deltaX * 0.008;
-
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
 
       touchStartY = touchY;
@@ -109,14 +124,18 @@ function CinematicCamera({
 
     // Attach to canvas element
     const canvas = gl.domElement;
-    // Mobile Chrome often treats passive: true as default, but we need preventDefault to stop scroll
-    // So we must set passive: false for touchmove
     canvas.addEventListener('wheel', handleWheel, { passive: true });
+    canvas.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
       canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
     };
@@ -127,32 +146,23 @@ function CinematicCamera({
   const orbitLookAt = useRef(new Vector3());
 
   useFrame((state, delta) => {
-    // Speed up entry animation (0.06 -> 0.1) to ensure we reach the 'inside' position before fade out
     const step = isFocused ? 0.1 : 0.04;
     const currentPos = cameraStateRef.current.pos;
     const currentLookAt = cameraStateRef.current.lookAt;
 
     if (isFocused) {
-      // Zoom in to specific door
       currentPos.lerp(targetPos, step);
       currentLookAt.lerp(lookAtPos, step);
     } else {
-      // Scroll Navigation Mode
-
-      // Smoothly interpolate scroll
-      // MOBILE: Lower lerp (0.1) for "heavier"/smoother feeling to hide micro-jitters
       const scrollLerp = isMobile ? 0.1 : 0.25;
       scrollY.current += (targetScrollY.current - scrollY.current) * scrollLerp;
 
-      // Smoothly interpolate angle for fluid rotation
-      // MOBILE: Lower lerp (0.05) for smoother rotation
       const angleLerp = isMobile ? 0.05 : 0.1;
       angle.current += (targetAngle.current - angle.current) * angleLerp;
 
       const x = Math.sin(angle.current) * RADIUS;
       const z = Math.cos(angle.current) * RADIUS;
 
-      // Update reusable vectors instead of creating new ones
       orbitPos.current.set(x, scrollY.current, z);
       orbitLookAt.current.set(0, scrollY.current * 0.6, 0);
 
