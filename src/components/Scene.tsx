@@ -128,7 +128,7 @@ function CinematicCamera({
     canvas.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
@@ -258,6 +258,7 @@ export default function Scene() {
           alpha: false,
           powerPreference: "high-performance"
         }}
+        style={{ touchAction: 'none' }}
       >
         {/* Skybox-ish background instead of black void */}
         {/* Premium Dusk: Deep Slate Blue used for a cohesive, rich night look */}
