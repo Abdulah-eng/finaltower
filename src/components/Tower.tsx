@@ -360,6 +360,9 @@ function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, 
     const labelRef = useRef<HTMLDivElement>(null);
     const [hovered, setHovered] = useState(false);
 
+    // Performance: cache the last applied opacity to prevent DOM layout thrashing on mobile
+    const lastOpacity = useRef<number>(-1);
+
     // Get company name safely
     const company = getCompanyById(companyId);
 
@@ -389,14 +392,13 @@ function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, 
                 const dot = cameraForward.dot(toBeacon);
 
                 // Opacity Logic:
-                // Full opacity if we are within range (< 120 units) AND looking loosely towards it (dot > 0.0)
-                // This makes it appear as soon as the door is roughly on the screen side.
+                // Full opacity if we are within range (< 180 units to support mobile's wider 150 radius) AND looking loosely towards it (dot > 0.0)
                 let targetOpacity = 0;
 
                 // Base visibility threshold - very loose now so it appears sooner
-                if (dist < 120 && dot > 0.1) {
-                    // Fade in smoothly as we get closer from 120 to 80 units
-                    const distFactor = 1.0 - Math.max(0, Math.min(1, (dist - 80) / 40));
+                if (dist < 180 && dot > 0.1) {
+                    // Fade in smoothly as we get closer from 180 to 100 units
+                    const distFactor = 1.0 - Math.max(0, Math.min(1, (dist - 100) / 80));
 
                     // Fade in as we look loosely at it (from 0.1 to 0.4 dot product)
                     const angleFactor = Math.max(0, Math.min(1, (dot - 0.1) / 0.3));
@@ -409,9 +411,14 @@ function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, 
                     targetOpacity = Math.max(targetOpacity, 1.0);
                 }
 
-                // Apply opacity directly to the DOM element for performance (avoids React re-renders)
-                labelRef.current.style.opacity = targetOpacity.toFixed(2);
-                labelRef.current.style.pointerEvents = targetOpacity > 0.1 ? 'auto' : 'none';
+                // PERFORMANCE OPTIMIZATION (Fixes Mobile Safari frame drops):
+                // Only write to the DOM if the opacity change is visually significant (> 5%) or hitting boundaries (0 or 1)
+                const roundedTarget = Math.round(targetOpacity * 20) / 20; // steps of 0.05
+                if (Math.abs(lastOpacity.current - roundedTarget) > 0.02) {
+                    labelRef.current.style.opacity = roundedTarget.toFixed(2);
+                    labelRef.current.style.pointerEvents = roundedTarget > 0.1 ? 'auto' : 'none';
+                    lastOpacity.current = roundedTarget;
+                }
             }
         }
     });
