@@ -1,8 +1,9 @@
 'use client';
 
-import { useGLTF } from '@react-three/drei';
+import { useGLTF, Octahedron, Html } from '@react-three/drei';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
+import { useFrame } from '@react-three/fiber';
 import { getCompanyByMesh, getCompanyById } from '../data/companies';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Door from './Door';
@@ -27,6 +28,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
     const scene = useMemo(() => gltf.scene.clone(), [gltf.scene]);
 
     const [customDoors, setCustomDoors] = useState<{ id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[]>([]);
+    const [beacons, setBeacons] = useState<{ id: string; position: Vector3 }[]>([]);
 
     // Debug: Check distinct materials
     useEffect(() => {
@@ -45,6 +47,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         const companyMeshes: Mesh[] = [];
         const meshesByCompany: Record<string, Mesh[]> = {};
         const newCustomDoors: { id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[] = [];
+        const newBeacons: { id: string; position: Vector3 }[] = [];
 
         // Pass 1: Collect meshes and identify explicit doors
         scene.traverse((child) => {
@@ -86,12 +89,15 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                             // (In case multiple meshes share the same name or logic triggers twice)
                             const isDuplicate = newCustomDoors.some(d => d.id === company.id);
                             if (!isDuplicate) {
+                                // INCREASE GEOMETRY: Multiply the scale so the door pops out of the archway
+                                const enlargedScale = child.scale.clone().multiplyScalar(1.15); // 15% larger
+
                                 newCustomDoors.push({
                                     id: company.id,
                                     modelId: company.doorModel,
                                     position: child.getWorldPosition(new Vector3()), // Use World Position
                                     rotation: child.rotation.clone(),
-                                    scale: child.scale.clone()
+                                    scale: enlargedScale
                                 });
                             }
                         } else {
@@ -162,8 +168,18 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 
                 hotspot.userData.companyId = companyId;
                 hotspot.userData.isHotspot = true;
+
+                // Beacon Position: above the centroid / door
+                const beaconPos = center.clone();
+                beaconPos.y += 2.0; // adjust height above door
+                newBeacons.push({
+                    id: companyId,
+                    position: beaconPos
+                });
             }
         });
+
+        setBeacons(newBeacons);
 
         // Update ref
         meshesByCompanyRef.current = meshesByCompany;
@@ -305,6 +321,140 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                     scale={door.scale}
                 />
             ))}
+            {/* Render 3D Glowing Beacons over doors */}
+            {beacons.map((beacon) => (
+                <Beacon key={`beacon-${beacon.id}`} position={beacon.position} companyId={beacon.id} onHover={(hover) => {
+                    if (hover) {
+                        setHoveredMesh(beacon.id);
+                        document.body.style.cursor = 'pointer';
+                        onHover(true);
+                        setHighlight(beacon.id, true);
+                    } else {
+                        setHoveredMesh(null);
+                        document.body.style.cursor = 'auto';
+                        onHover(false);
+                        setHighlight(beacon.id, false);
+                    }
+                }} onClick={() => {
+                    const company = getCompanyById(beacon.id);
+                    if (company) {
+                        const meshes = meshesByCompanyRef.current[company.id];
+                        let targetPoint = beacon.position;
+                        if (meshes && meshes.length > 0) {
+                            const center = new Vector3();
+                            meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
+                            center.divideScalar(meshes.length);
+                            targetPoint = center;
+                        }
+                        onSelect(company.meshNames[0], targetPoint);
+                    }
+                }} />
+            ))}
+        </group>
+    );
+}
+
+// Beacon Component for Animation & Context-Aware Labels
+function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, companyId: string, onHover: (h: boolean) => void, onClick: () => void }) {
+    const meshRef = useRef<Mesh>(null);
+    const labelRef = useRef<HTMLDivElement>(null);
+    const [hovered, setHovered] = useState(false);
+
+    // Get company name safely
+    const company = getCompanyById(companyId);
+
+    useFrame((state) => {
+        if (meshRef.current) {
+            // Spin
+            meshRef.current.rotation.y += 0.02;
+            // Hover up and down
+            const floatingY = position.y + Math.sin(state.clock.elapsedTime * 2) * 0.2;
+            meshRef.current.position.y = floatingY;
+
+            // --- CONTEXT-AWARE LABEL LOGIC ---
+            if (labelRef.current) {
+                const camera = state.camera;
+
+                // 1. Calculate Distance
+                const dist = camera.position.distanceTo(meshRef.current.position);
+
+                // 2. Calculate Angle (Are we looking at it?)
+                // Vector from camera to beacon
+                const toBeacon = meshRef.current.position.clone().sub(camera.position).normalize();
+
+                // Camera's forward vector
+                const cameraForward = new Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+
+                // Dot product: 1 means looking directly at it, < 0 means it's behind us
+                const dot = cameraForward.dot(toBeacon);
+
+                // Opacity Logic:
+                // Full opacity if we are within range (< 120 units) AND looking loosely towards it (dot > 0.0)
+                // This makes it appear as soon as the door is roughly on the screen side.
+                let targetOpacity = 0;
+
+                // Base visibility threshold - very loose now so it appears sooner
+                if (dist < 120 && dot > 0.1) {
+                    // Fade in smoothly as we get closer from 120 to 80 units
+                    const distFactor = 1.0 - Math.max(0, Math.min(1, (dist - 80) / 40));
+
+                    // Fade in as we look loosely at it (from 0.1 to 0.4 dot product)
+                    const angleFactor = Math.max(0, Math.min(1, (dot - 0.1) / 0.3));
+
+                    targetOpacity = distFactor * angleFactor;
+                }
+
+                // Give it a significant boost if hovered
+                if (hovered) {
+                    targetOpacity = Math.max(targetOpacity, 1.0);
+                }
+
+                // Apply opacity directly to the DOM element for performance (avoids React re-renders)
+                labelRef.current.style.opacity = targetOpacity.toFixed(2);
+                labelRef.current.style.pointerEvents = targetOpacity > 0.1 ? 'auto' : 'none';
+            }
+        }
+    });
+
+    return (
+        <group position={position}>
+            <Octahedron
+                ref={meshRef as any}
+                args={[0.6, 0]} // Small diamond
+                position={[0, 0, 0]} // Local 0, managed by group + useFrame
+                onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(true); }}
+                onPointerOut={(e) => { e.stopPropagation(); setHovered(false); onHover(false); }}
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
+            >
+                <meshBasicMaterial color={hovered ? "#ffffff" : "#d4af37"} />
+            </Octahedron>
+
+            {/* The Floating Context-Aware Label */}
+            {company && (
+                <Html
+                    position={[0, 1.2, 0]} // Exactly above the diamond
+                    center
+                    distanceFactor={40}
+                    zIndexRange={[100, 0]}
+                    className="beacon-label-container"
+                >
+                    <div
+                        ref={labelRef}
+                        className="flex flex-col items-center justify-center transition-opacity duration-100 cursor-pointer"
+                        style={{ opacity: 0, pointerEvents: 'none' }} // Starts hidden
+                        onClick={(e) => { e.stopPropagation(); onClick(); }}
+                        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(true); }}
+                        onPointerOut={(e) => { e.stopPropagation(); setHovered(false); onHover(false); }}
+                    >
+                        {/* Premium label styling */}
+                        <div className="px-3 py-1.5 bg-black/80 backdrop-blur-md rounded border-b-2 border-[#d4af37] text-[12px] sm:text-[14px] text-white/90 whitespace-nowrap font-serif tracking-widest shadow-2xl relative overflow-hidden">
+                            {/* Subtle shine effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
+                            {company.name}
+                        </div>
+                    </div>
+                </Html>
+            )}
         </group>
     );
 }
@@ -312,3 +462,14 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 // Preload both variants
 useGLTF.preload('/models/colleseum_final.glb');
 useGLTF.preload('/models/colleseum_mobile.glb');
+
+// Preload all custom door models to fix load times
+useGLTF.preload('/models/doors/OP1.glb');
+useGLTF.preload('/models/doors/OP3.glb');
+useGLTF.preload('/models/doors/OP4.glb');
+useGLTF.preload('/models/doors/PWR1.glb');
+useGLTF.preload('/models/doors/PWR3.glb');
+useGLTF.preload('/models/doors/PWR4.glb');
+useGLTF.preload('/models/doors/SP1.glb');
+useGLTF.preload('/models/doors/SP3.glb');
+useGLTF.preload('/models/doors/SP4.glb');

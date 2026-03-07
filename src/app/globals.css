@@ -18,6 +18,42 @@ body {
   padding: 0;
   overflow: hidden;
   font-family: var(--font-sans);
+  cursor: none;
+  /* Hide default cursor */
+}
+
+/* Custom Cursor Dot */
+.custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #d4af37;
+  /* Gold color */
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: width 0.2s, height 0.2s, background-color 0.2s;
+  mix-blend-mode: difference;
+}
+
+.custom-cursor.hovering {
+  width: 20px;
+  height: 20px;
+  background-color: #ffffff;
+}
+
+/* Add global pointer-events auto for interactive parts since body cursor is none */
+a,
+button,
+[role="button"],
+input,
+select,
+textarea {
+  cursor: none;
+  /* Keep none so custom cursor handles it */
 }
 
 h1,

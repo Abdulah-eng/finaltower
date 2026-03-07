@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cinzel, Lato } from "next/font/google";
 import "./globals.css";
+import CustomCursor from "@/components/CustomCursor";
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${cinzel.variable} ${lato.variable} antialiased font-sans`}>
+        <CustomCursor />
         {children}
       </body>
     </html>

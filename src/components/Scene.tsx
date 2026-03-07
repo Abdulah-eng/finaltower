@@ -65,10 +65,11 @@ function CinematicCamera({
       if (isFocused) return; // Disable scroll nav when focused on a door
 
       // Update target scroll position - Inverted direction for natural feeling
-      targetScrollY.current -= e.deltaY * 0.08;
+      // Heavy 30-40% - Reduce sensitivity
+      targetScrollY.current -= e.deltaY * 0.04;
 
       // Horizontal scrolling for Rotation (Trackpad horizontal scroll)
-      targetAngle.current += e.deltaX * 0.005;
+      targetAngle.current += e.deltaX * 0.003;
 
       // Clamp values
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
@@ -88,7 +89,8 @@ function CinematicCamera({
       const deltaX = e.clientX - lastMouseX.current;
       // Drag Horizontal -> Rotate camera around the tower
       // We use a negative multiplier so dragging RIGHT (positive deltaX) rotates camera LEFT 
-      targetAngle.current -= deltaX * 0.008;
+      // Heavy 30-40% - Reduce sensitivity
+      targetAngle.current -= deltaX * 0.005;
       lastMouseX.current = e.clientX;
     };
 
@@ -114,8 +116,9 @@ function CinematicCamera({
       const deltaY = touchStartY - touchY;
       const deltaX = touchStartX - touchX;
 
-      targetScrollY.current -= deltaY * 0.15;
-      targetAngle.current += deltaX * 0.008;
+      // Heavy 30-40% - Reduce sensitivity
+      targetScrollY.current -= deltaY * 0.08;
+      targetAngle.current += deltaX * 0.005;
       targetScrollY.current = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, targetScrollY.current));
 
       touchStartY = touchY;
@@ -146,7 +149,8 @@ function CinematicCamera({
   const orbitLookAt = useRef(new Vector3());
 
   useFrame((state, delta) => {
-    const step = isFocused ? 0.1 : 0.04;
+    // Heavy 30-40% - Reduce interpolation steps for more lag/inertia
+    const step = isFocused ? 0.06 : 0.025;
     const currentPos = cameraStateRef.current.pos;
     const currentLookAt = cameraStateRef.current.lookAt;
 
@@ -154,10 +158,11 @@ function CinematicCamera({
       currentPos.lerp(targetPos, step);
       currentLookAt.lerp(lookAtPos, step);
     } else {
-      const scrollLerp = isMobile ? 0.1 : 0.25;
+      // Heavy 30-40% - Increase damping by lowering lerp
+      const scrollLerp = isMobile ? 0.06 : 0.15;
       scrollY.current += (targetScrollY.current - scrollY.current) * scrollLerp;
 
-      const angleLerp = isMobile ? 0.05 : 0.1;
+      const angleLerp = isMobile ? 0.03 : 0.06;
       angle.current += (targetAngle.current - angle.current) * angleLerp;
 
       const x = Math.sin(angle.current) * RADIUS;
