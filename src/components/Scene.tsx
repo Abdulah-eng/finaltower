@@ -2,7 +2,7 @@
 
 // ... (imports remain the same)
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { Environment, PerspectiveCamera, Stars, useProgress } from '@react-three/drei';
+import { Environment, PerspectiveCamera, Sparkles, Stars, useProgress } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
@@ -31,7 +31,8 @@ function CinematicCamera({
   isFocused,
   isHovered,
   isMobile,
-  cameraStateRef
+  cameraStateRef,
+  bgRef
 }: {
   targetPos: Vector3;
   lookAtPos: Vector3;
@@ -39,6 +40,7 @@ function CinematicCamera({
   isHovered: boolean;
   isMobile: boolean;
   cameraStateRef: React.MutableRefObject<{ pos: Vector3; lookAt: Vector3 }>;
+  bgRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { camera, gl } = useThree();
 
@@ -177,6 +179,15 @@ function CinematicCamera({
 
     camera.position.copy(currentPos);
     camera.lookAt(currentLookAt);
+
+    // Apply Vertical Parallax to CSS Background
+    if (bgRef && bgRef.current) {
+      // Create vertical parallax by reading the camera's actual Y position
+      // camera.position.y scales from roughly 90 down to 5.
+      // Parallax moves the background physically up and down as we scroll the tower
+      const parallaxY = (currentPos.y - 90) * 3.5; 
+      bgRef.current.style.transform = `translateY(${parallaxY}px)`;
+    }
   });
 
   return (
@@ -194,6 +205,9 @@ export default function Scene() {
   const [lookTarget, setLookTarget] = useState(new Vector3(0, 10, 0));
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Reference to the CSS background container for scroll parallax
+  const bgRef = useRef<HTMLDivElement>(null);
 
   // Use a ref to track if we've already opened the website for the current selection
   // Also using a state to force re-render for the overlay since ref changes don't trigger render
@@ -255,22 +269,32 @@ export default function Scene() {
         className={`absolute inset-0 z-40 bg-black pointer-events-none transition-opacity duration-700 ease-in ${isTransitioning ? 'opacity-100' : 'opacity-0'}`}
       />
 
+      {/* Animated Night Sky Background (Behind Canvas) */}
+      <div className="absolute inset-0 z-0 bg-[#0a0f14] overflow-hidden">
+        {/* Massive parallax container that moves up/down with scroll */}
+        <div ref={bgRef} className="absolute inset-x-0 -top-[100vh] h-[300vh] will-change-transform">
+          <div className="absolute inset-0 bg-stars hidden md:block"></div>
+          <div className="absolute -inset-y-20 -inset-x-0 bg-clouds-1 mix-blend-screen pointer-events-none"></div>
+          <div className="absolute -inset-y-10 -inset-x-0 bg-clouds-2 mix-blend-screen pointer-events-none"></div>
+        </div>
+        
+        {/* Soft vignette/gradient to blend the edges of the sky into the viewport and hide parallax edges */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0f0d0a] via-[#0f0d0a]/20 to-[#0f0d0a] pointer-events-none"></div>
+      </div>
+
       <Canvas
+        className="z-10 relative"
         shadows={!isMobile} // Disable shadow map entirely on mobile
         dpr={isMobile ? 1 : [1, 2]} // Cap DPR at 1.0 for mobile (Battery/Performance saver)
         gl={{
           antialias: !isMobile, // Disable MSAA on mobile for slight perf boost
-          alpha: false,
+          alpha: true, // Allow the CSS animated background to show through
           powerPreference: "high-performance"
         }}
         style={{ touchAction: 'none' }}
       >
-        {/* Skybox-ish background instead of black void */}
-        {/* Premium Dusk: Deep Slate Blue used for a cohesive, rich night look */}
-        <color attach="background" args={['#0b1015']} />
-
-        {/* Adjusted fog for a more dramatic, premium depth */}
-        <fog attach="fog" args={['#0b1015', 50, 350]} />
+        {/* Fog color matched to the bottom CSS gradient color to blend seamlessly */}
+        <fogExp2 attach="fog" args={['#05070a', 0.003]} />
 
         <CinematicCamera
           targetPos={cameraTarget}
@@ -279,40 +303,42 @@ export default function Scene() {
           isHovered={isHovered}
           isMobile={isMobile}
           cameraStateRef={cameraStateRef}
+          bgRef={bgRef}
         />
 
-        {/* Improved Lighting Setup - Premium Contrast & Balance */}
-        {/* Ambient: Increased intensity to fill "Dark" spots. Cool Moonlight. */}
-        <ambientLight intensity={0.7} color="#b0c4de" />
+        {/* Improved Lighting Setup - High Contrast Premium Look */}
+        {/* Ambient: Darker, moody warm fill */}
+        <ambientLight intensity={0.5} color="#d4c5b0" />
 
-        {/* Spot: Warm Gold Key Light to highlight the structure */}
-        {/* Reduced mapSize to 512 for performance */}
+        {/* Spot: Sharp Warm Gold Key Light to highly accentuate the architecture */}
         <spotLight
-          position={[50, 80, 50]}
-          angle={0.25}
+          position={[60, 100, 60]}
+          angle={0.4}
           penumbra={1}
-          intensity={1.8}
-          color="#ffd700"
-          castShadow={!isMobile} // Disable shadow casting on mobile
-          shadow-mapSize={[512, 512]}
+          intensity={3.0}
+          color="#ffedc2"
+          castShadow={!isMobile}
+          shadow-mapSize={[1024, 1024]}
           shadow-bias={-0.0001}
         />
 
         {/* Secondary Lights: Desktop Only */}
         {!isMobile && (
           <>
-            {/* Rim Light: Subtle warm glow from opposite side */}
-            <pointLight position={[-40, 30, -40]} intensity={1.0} color="#ffaa00" distance={100} />
-            {/* Fill Light: Stronger Cool blue to fill shadows on the dark side */}
-            <pointLight position={[40, 0, 40]} intensity={0.8} color="#4682b4" distance={100} />
+            {/* Rim Light: Sharp gold edge light */}
+            <pointLight position={[-60, 40, -60]} intensity={2.0} color="#e0a96d" distance={150} />
+            {/* Fill Light: Soft cinematic warmth to contrast the shadows */}
+            <pointLight position={[50, -20, 50]} intensity={1.0} color="#4a3b2c" distance={150} />
           </>
         )}
 
         <Environment preset="city" blur={0.6} background={false} />
 
-        {/* Optimization: Reduce star count significantly */}
-        {/* Optimization: Disable Stars on mobile completely to save draw calls */}
-        {!isMobile && <Stars radius={300} depth={60} count={3000} factor={4} saturation={0} fade speed={0.5} />}
+        {/* 3D Stars for parallax depth overlapping the CSS ambient sky and clouds */}
+        {/* Heavy star count to make a deeply stary view as requested */}
+        {!isMobile && (
+          <Stars radius={250} depth={80} count={12000} factor={6} saturation={0} fade speed={1.5} />
+        )}
 
         <Suspense fallback={null}>
           <Suspense fallback={null}>
@@ -324,8 +350,10 @@ export default function Scene() {
         {!isMobile && (
           <EffectComposer enableNormalPass={false} multisampling={0}>
             <SMAA />
-            <Bloom luminanceThreshold={1} mipmapBlur intensity={0.5} />
-            <Vignette eskil={false} offset={0.1} darkness={0.5} />
+            {/* Ethereal Glow: Smooth blooming for metals and hot spots */}
+            <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} mipmapBlur intensity={0.8} />
+            {/* Dramatic Vignette to focus eyes toward the center tower */}
+            <Vignette eskil={false} offset={0.25} darkness={0.6} />
           </EffectComposer>
         )}
 

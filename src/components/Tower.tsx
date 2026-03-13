@@ -391,19 +391,20 @@ function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, 
                 // Dot product: 1 means looking directly at it, < 0 means it's behind us
                 const dot = cameraForward.dot(toBeacon);
 
-                // Opacity Logic:
-                // Full opacity if we are within range (< 180 units to support mobile's wider 150 radius) AND looking loosely towards it (dot > 0.0)
+                // MATHEMATICAL OCCLUSION (Replaces buggy occlude="blending")
+                // Assess if the beacon is on the front side or back side of the tower relative to the camera
+                const beaconWorldDir = position.clone().normalize(); // Assuming tower is centered at origin [0,0,0]
+                const cameraWorldDir = camera.position.clone().normalize();
+                
+                // If dot product > 0.1, it's on the half of the cylinder facing the camera
+                const isFrontFacing = beaconWorldDir.dot(cameraWorldDir) > 0.1;
+
                 let targetOpacity = 0;
 
-                // Base visibility threshold - very loose now so it appears sooner
-                if (dist < 180 && dot > 0.1) {
-                    // Fade in smoothly as we get closer from 180 to 100 units
-                    const distFactor = 1.0 - Math.max(0, Math.min(1, (dist - 100) / 80));
-
-                    // Fade in as we look loosely at it (from 0.1 to 0.4 dot product)
-                    const angleFactor = Math.max(0, Math.min(1, (dot - 0.1) / 0.3));
-
-                    targetOpacity = distFactor * angleFactor;
+                // Stricter visibility threshold to reduce "traffic" 
+                // ONLY show if it's front-facing, within distance, and looking directly at it
+                if (isFrontFacing && dist < 120 && dot > 0.6) {
+                    targetOpacity = 1; // Snap to visible instantly
                 }
 
                 // Give it a significant boost if hovered
@@ -436,13 +437,13 @@ function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, 
                 <meshBasicMaterial color={hovered ? "#ffffff" : "#d4af37"} />
             </Octahedron>
 
-            {/* The Floating Context-Aware Label */}
+            {/* The Floating Context-Aware Label (Now using Logos instead of Names) */}
             {company && (
                 <Html
                     position={[0, 1.2, 0]} // Exactly above the diamond
                     center
                     distanceFactor={40}
-                    zIndexRange={[100, 0]}
+                    // REMOVED buggy occlude="blending" which was causing gray boxes and massive lag
                     className="beacon-label-container"
                 >
                     <div
@@ -453,11 +454,17 @@ function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, 
                         onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(true); }}
                         onPointerOut={(e) => { e.stopPropagation(); setHovered(false); onHover(false); }}
                     >
-                        {/* Premium label styling */}
-                        <div className="px-3 py-1.5 bg-black/80 backdrop-blur-md rounded border-b-2 border-[#d4af37] text-[12px] sm:text-[14px] text-white/90 whitespace-nowrap font-serif tracking-widest shadow-2xl relative overflow-hidden">
+                        {/* Premium Logo styling (Light frosted glass for original colors) */}
+                        <div className="p-2 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center justify-center min-w-[80px] min-h-[50px] relative overflow-hidden group hover:border-[#d4af37]/50 transition-colors">
                             {/* Subtle shine effect */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
-                            {company.name}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] animate-[shimmer_3s_infinite]"></div>
+                            
+                            {/* Company Logo Image - Original Colors */}
+                            <img 
+                                src={company.logo} 
+                                alt={company.name} 
+                                className="w-[120px] h-[50px] object-contain drop-shadow-md" 
+                            />
                         </div>
                     </div>
                 </Html>
