@@ -323,7 +323,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
             ))}
             {/* Render 3D Glowing Beacons over doors */}
             {beacons.map((beacon) => (
-                <Beacon key={`beacon-${beacon.id}`} position={beacon.position} companyId={beacon.id} onHover={(hover) => {
+                <Beacon key={`beacon-${beacon.id}`} position={beacon.position} companyId={beacon.id} isMobile={isMobile} onHover={(hover) => {
                     if (hover) {
                         setHoveredMesh(beacon.id);
                         document.body.style.cursor = 'pointer';
@@ -355,7 +355,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 }
 
 // Beacon Component for Animation & Context-Aware Labels
-function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, companyId: string, onHover: (h: boolean) => void, onClick: () => void }) {
+function Beacon({ position, companyId, isMobile, onHover, onClick }: { position: Vector3, companyId: string, isMobile: boolean, onHover: (h: boolean) => void, onClick: () => void }) {
     const meshRef = useRef<Mesh>(null);
     const labelRef = useRef<HTMLDivElement>(null);
     const [hovered, setHovered] = useState(false);
@@ -402,8 +402,11 @@ function Beacon({ position, companyId, onHover, onClick }: { position: Vector3, 
                 let targetOpacity = 0;
 
                 // Stricter visibility threshold to reduce "traffic" 
-                // ONLY show if it's front-facing, within distance, and looking directly at it
-                if (isFrontFacing && dist < 120 && dot > 0.6) {
+                // Mobile camera sits further back (radius 150), Desktop sits closer (radius 110)
+                const maxDist = isMobile ? 180 : 120;
+                const dotThreshold = isMobile ? 0.5 : 0.6; // Slightly looser angle for narrow mobile screens
+
+                if (isFrontFacing && dist < maxDist && dot > dotThreshold) {
                     targetOpacity = 1; // Snap to visible instantly
                 }
 

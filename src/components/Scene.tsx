@@ -273,7 +273,7 @@ export default function Scene() {
       <div className="absolute inset-0 z-0 bg-[#0a0f14] overflow-hidden">
         {/* Massive parallax container that moves up/down with scroll */}
         <div ref={bgRef} className="absolute inset-x-0 -top-[100vh] h-[300vh] will-change-transform">
-          <div className="absolute inset-0 bg-stars hidden md:block"></div>
+          <div className="absolute inset-0 bg-stars"></div>
           <div className="absolute -inset-y-20 -inset-x-0 bg-clouds-1 mix-blend-screen pointer-events-none"></div>
           <div className="absolute -inset-y-10 -inset-x-0 bg-clouds-2 mix-blend-screen pointer-events-none"></div>
         </div>
@@ -335,10 +335,16 @@ export default function Scene() {
         <Environment preset="city" blur={0.6} background={false} />
 
         {/* 3D Stars for parallax depth overlapping the CSS ambient sky and clouds */}
-        {/* Heavy star count to make a deeply stary view as requested */}
-        {!isMobile && (
-          <Stars radius={250} depth={80} count={12000} factor={6} saturation={0} fade speed={1.5} />
-        )}
+        {/* Dynamic count: Heavy star count on desktop, reduced count on mobile for performance */}
+        <Stars 
+          radius={250} 
+          depth={80} 
+          count={isMobile ? 4000 : 12000} 
+          factor={6} 
+          saturation={0} 
+          fade 
+          speed={1.5} 
+        />
 
         <Suspense fallback={null}>
           <Suspense fallback={null}>
