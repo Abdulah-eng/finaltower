@@ -21,7 +21,7 @@ export const companies: Company[] = [
         description: "A Driver of Development and a Symbol of Trust.",
         fullDescription: "Arabian Holding Group is one of Iraq's leading companies...",
         logo: "/logos/Arabian Holding Group – Iraq.png",
-        meshNames: ["door upper11", "door upper11.001", "door upper11.002", "door upper11.003"],
+        meshNames: ["door24"],
         doorModel: "OP1",
         website: "https://arabianholdinggroup.com",
         content: [
@@ -67,7 +67,7 @@ export const companies: Company[] = [
         name: "Mawaraa Al-Bihar General Trading",
         description: "Comprehensive trading and commercial agencies.",
         logo: "/logos/Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd..png",
-        meshNames: ["door upper12"],
+        meshNames: ["door2 upper"],
         doorModel: "OP3",
         website: "https://mawaraa-albihar.com",
         content: [
@@ -129,7 +129,7 @@ export const companies: Company[] = [
         name: "Al-Irtikaz Company",
         description: "Artistic production, marketing, and technical services.",
         logo: "/logos/Al-Irtikaz Company.png",
-        meshNames: ["door upper13"],
+        meshNames: ["door26"],
         doorModel: "OP4",
         website: "https://alirtikaz.com",
         content: [
@@ -168,7 +168,7 @@ export const companies: Company[] = [
         name: "Nidaa Al-Ard Company",
         description: "Agricultural investments and general trading.",
         logo: "/logos/Nidaa Al-Ard Company.png",
-        meshNames: ["door upper14"],
+        meshNames: ["door2 upper.001"],
         doorModel: "PWR1",
         website: "https://nidaa-alard.com",
         content: [
@@ -204,7 +204,7 @@ export const companies: Company[] = [
         name: "Al-Takween Commercial Agencies",
         description: "Your trusted partner in commercial agencies and marketing.",
         logo: "/logos/Al-Takween Commercial Agencies Company.png",
-        meshNames: ["door2 upper", "door2 upper.001", "door2 upper.002", "door2 upper.003", "door2 upper.004", "door2 upper.005", "door2 upper.006"],
+        meshNames: ["door2 upper.002"],
         doorModel: "PWR3",
         website: "https://altakween.com",
         content: [
@@ -245,7 +245,7 @@ export const companies: Company[] = [
         name: "Al-Arabiya International",
         description: "Your trusted partner in innovation and investment.",
         logo: "/logos/Al-Arabiya International company.png",
-        meshNames: ["door27"],
+        meshNames: ["door2 upper.003"],
         doorModel: "PWR4",
         website: "https://alarabiya-international.com",
         content: [
@@ -278,7 +278,7 @@ export const companies: Company[] = [
         name: "Al-Zawraa Company",
         description: "Audio-visual broadcasting, advertising, and publishing.",
         logo: "/logos/Al-Zawraa Company for Audio-Visual Broadcasting, Advertising, Publishing, Distribution, and Marketing.png",
-        meshNames: ["door17"],
+        meshNames: ["door2 upper.004"],
         doorModel: "SP1",
         website: "https://alzawraa.com",
         content: [
@@ -340,7 +340,7 @@ export const companies: Company[] = [
         name: "Dazly General Trading",
         description: "Your gateway to smart and comprehensive shopping.",
         logo: "/logos/Dazly General Trading & E-Commerce Company.png",
-        meshNames: ["door12"],
+        meshNames: ["door27"],
         doorModel: "SP4",
         website: "https://dazly.com",
         content: [
@@ -395,7 +395,7 @@ export const companies: Company[] = [
         name: "Ameer Al-Middle East",
         description: "Exhibitions, conferences, advertising, and catering.",
         logo: "/logos/Ameer Al-Middle East Company.png",
-        meshNames: ["door14"],
+        meshNames: ["door25"],
         doorModel: "OP3",
         website: "https://ameer-middleeast.com",
         content: [
@@ -443,7 +443,7 @@ export const companies: Company[] = [
         name: "Imkanat Development Company",
         description: "A pioneer of sustainability and green transformation.",
         logo: "/logos/Imkanat Development Company.png",
-        meshNames: ["door16"],
+        meshNames: ["door14"],
         doorModel: "PWR1",
         website: "https://imkanat.com",
         content: [
@@ -472,7 +472,7 @@ export const companies: Company[] = [
         name: "Baghdad Wings Airline",
         description: "We carry Baghdad to the world.",
         logo: "/logos/Baghdad Wings Airline.png",
-        meshNames: ["door21"],
+        meshNames: ["door16"],
         doorModel: "PWR3",
         website: "https://baghdadwings.com",
         content: [
@@ -498,7 +498,7 @@ export const companies: Company[] = [
         name: "INMOBILES – FZCO",
         description: "Leading mobile devices and technology sector.",
         logo: "/logos/INMOBILES – FZCO.png",
-        meshNames: ["door22"],
+        meshNames: ["door12"],
         doorModel: "PWR4",
         website: "https://inmobiles.com",
         content: [
@@ -523,7 +523,7 @@ export const companies: Company[] = [
         name: "Iraqi Insurance Union",
         description: "A trusted partner for decades.",
         logo: "/logos/Iraqi Insurance Union.png",
-        meshNames: ["door23"],
+        meshNames: ["door22"],
         doorModel: "SP1",
         website: "https://iraqiinsurance.com",
         content: [
@@ -548,7 +548,7 @@ export const companies: Company[] = [
         name: "HIMMATI General Trading",
         description: "With your determination… we realize your ambitions.",
         logo: "/logos/HIMMATI General Trading Company.png",
-        meshNames: ["door24"],
+        meshNames: ["door23"],
         doorModel: "SP3",
         website: "https://himmati.com",
         content: [
@@ -571,9 +571,20 @@ export const companies: Company[] = [
 ];
 
 export const getCompanyByMesh = (meshName: string) => {
-    return companies.find(c => c.meshNames.some(targetName =>
-        meshName === targetName || meshName.startsWith(`${targetName}.`)
-    ));
+    let bestMatch: Company | null = null;
+    let longestMatchLength = -1;
+
+    for (const company of companies) {
+        for (const targetName of company.meshNames) {
+            if (meshName === targetName || meshName.startsWith(`${targetName}.`)) {
+                if (targetName.length > longestMatchLength) {
+                    longestMatchLength = targetName.length;
+                    bestMatch = company;
+                }
+            }
+        }
+    }
+    return bestMatch;
 };
 
 export const getCompanyById = (id: string) => {

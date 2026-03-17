@@ -151,8 +151,8 @@ function CinematicCamera({
   const orbitLookAt = useRef(new Vector3());
 
   useFrame((state, delta) => {
-    // Heavy 30-40% - Reduce interpolation steps for more lag/inertia
-    const step = isFocused ? 0.06 : 0.025;
+    // Higher interpolation steps to eliminate lag/inertia
+    const step = isFocused ? 0.06 : 0.8;
     const currentPos = cameraStateRef.current.pos;
     const currentLookAt = cameraStateRef.current.lookAt;
 
@@ -160,11 +160,11 @@ function CinematicCamera({
       currentPos.lerp(targetPos, step);
       currentLookAt.lerp(lookAtPos, step);
     } else {
-      // Heavy 30-40% - Increase damping by lowering lerp
-      const scrollLerp = isMobile ? 0.06 : 0.15;
+      // Higher lerp for immediate response
+      const scrollLerp = 0.95;
       scrollY.current += (targetScrollY.current - scrollY.current) * scrollLerp;
 
-      const angleLerp = isMobile ? 0.03 : 0.06;
+      const angleLerp = 0.95;
       angle.current += (targetAngle.current - angle.current) * angleLerp;
 
       const x = Math.sin(angle.current) * RADIUS;

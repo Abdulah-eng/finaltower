@@ -28,7 +28,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
     const scene = useMemo(() => gltf.scene.clone(), [gltf.scene]);
 
     const [customDoors, setCustomDoors] = useState<{ id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[]>([]);
-    const [beacons, setBeacons] = useState<{ id: string; position: Vector3 }[]>([]);
+    const [beacons, setBeacons] = useState<{ id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[]>([]);
 
     // Debug: Check distinct materials
     useEffect(() => {
@@ -47,7 +47,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         const companyMeshes: Mesh[] = [];
         const meshesByCompany: Record<string, Mesh[]> = {};
         const newCustomDoors: { id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[] = [];
-        const newBeacons: { id: string; position: Vector3 }[] = [];
+        const newBeacons: { id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[] = [];
 
         // Pass 1: Collect meshes and identify explicit doors
         scene.traverse((child) => {
@@ -139,8 +139,23 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         });
 
         // Pass 3: Create Invisible Hotspots & Lights centered on the door group
+        const sliceOccupancy: { [slice: string]: string[] } = {};
+        Object.entries(meshesByCompany).forEach(([companyId, meshes]) => {
+            const firstMesh = meshes[0]?.name || "";
+            const sliceMatch = firstMesh.match(/door\d(\d)/);
+            if (sliceMatch) {
+                const slice = sliceMatch[1];
+                if (!sliceOccupancy[slice]) sliceOccupancy[slice] = [];
+                sliceOccupancy[slice].push(companyId);
+            }
+        });
+
         Object.entries(meshesByCompany).forEach(([companyId, meshes]) => {
             if (meshes.length === 0) return;
+            const firstMesh = meshes[0]?.name || "";
+            const sliceMatch = firstMesh.match(/door\d(\d)/);
+            const slice = sliceMatch ? sliceMatch[1] : null;
+            const hasVerticalPartner = slice ? sliceOccupancy[slice].length > 1 : false;
 
             // Calculate Centroid
             const center = new Vector3();
@@ -174,7 +189,9 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                 beaconPos.y += 2.0; // adjust height above door
                 newBeacons.push({
                     id: companyId,
-                    position: beaconPos
+                    position: beaconPos,
+                    meshName: firstMesh,
+                    hasVerticalPartner
                 });
             }
         });
@@ -323,7 +340,14 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
             ))}
             {/* Render 3D Glowing Beacons over doors */}
             {beacons.map((beacon) => (
-                <Beacon key={`beacon-${beacon.id}`} position={beacon.position} companyId={beacon.id} isMobile={isMobile} onHover={(hover) => {
+                <Beacon 
+                    key={`beacon-${beacon.id}`} 
+                    position={beacon.position} 
+                    companyId={beacon.id} 
+                    meshName={beacon.meshName}
+                    hasVerticalPartner={beacon.hasVerticalPartner}
+                    isMobile={isMobile} 
+                    onHover={(hover) => {
                     if (hover) {
                         setHoveredMesh(beacon.id);
                         document.body.style.cursor = 'pointer';
@@ -355,13 +379,22 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 }
 
 // Beacon Component for Animation & Context-Aware Labels
-function Beacon({ position, companyId, isMobile, onHover, onClick }: { position: Vector3, companyId: string, isMobile: boolean, onHover: (h: boolean) => void, onClick: () => void }) {
+function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, onHover, onClick }: { 
+    position: Vector3, 
+    companyId: string, 
+    meshName: string,
+    hasVerticalPartner: boolean,
+    isMobile: boolean, 
+    onHover: (h: boolean) => void, 
+    onClick: () => void 
+}) {
     const meshRef = useRef<Mesh>(null);
     const labelRef = useRef<HTMLDivElement>(null);
     const [hovered, setHovered] = useState(false);
 
-    // Performance: cache the last applied opacity to prevent DOM layout thrashing on mobile
+    // Performance: cache values to prevent DOM layout thrashing
     const lastOpacity = useRef<number>(-1);
+    const lastZIndex = useRef<number>(-1);
 
     // Get company name safely
     const company = getCompanyById(companyId);
@@ -393,21 +426,34 @@ function Beacon({ position, companyId, isMobile, onHover, onClick }: { position:
 
                 // MATHEMATICAL OCCLUSION (Replaces buggy occlude="blending")
                 // Assess if the beacon is on the front side or back side of the tower relative to the camera
+                // assessed if the beacon is on the front side or back side of the tower relative to the camera
                 const beaconWorldDir = position.clone().normalize(); // Assuming tower is centered at origin [0,0,0]
                 const cameraWorldDir = camera.position.clone().normalize();
                 
-                // If dot product > 0.1, it's on the half of the cylinder facing the camera
-                const isFrontFacing = beaconWorldDir.dot(cameraWorldDir) > 0.1;
+                // STRICTER Front-facing check (acos(0.6)*2 ≈ 106 deg arc)
+                const isFrontFacing = beaconWorldDir.dot(cameraWorldDir) > 0.5;
 
                 let targetOpacity = 0;
 
-                // Stricter visibility threshold to reduce "traffic" 
-                // Mobile camera sits further back (radius 150), Desktop sits closer (radius 110)
-                const maxDist = isMobile ? 180 : 120;
-                const dotThreshold = isMobile ? 0.5 : 0.6; // Slightly looser angle for narrow mobile screens
+                // STRICTER visibility threshold to eliminate overlaps
+                const maxDist = isMobile ? 180 : 130;
+                const dotThreshold = isMobile ? 0.75 : 0.85; 
 
                 if (isFrontFacing && dist < maxDist && dot > dotThreshold) {
-                    targetOpacity = 1; // Snap to visible instantly
+                    targetOpacity = 1;
+
+                    // --- ROTATION-BASED VISIBILITY TOGGLE ---
+                    // For companies sharing a vertical slice, swap visibility at the center.
+                    if (hasVerticalPartner) {
+                        const cameraRight = new Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                        const sideDot = beaconWorldDir.dot(cameraRight);
+                        
+                        // Door1 (Bottom) is visible on right side, Door2 (Top) on left side.
+                        // This prevents them from ever overlapping as they cross the center.
+                        const isFloor1 = meshName.includes('door1');
+                        if (isFloor1 && sideDot < 0) targetOpacity = 0;
+                        if (!isFloor1 && sideDot > 0) targetOpacity = 0;
+                    }
                 }
 
                 // Give it a significant boost if hovered
@@ -415,13 +461,23 @@ function Beacon({ position, companyId, isMobile, onHover, onClick }: { position:
                     targetOpacity = Math.max(targetOpacity, 1.0);
                 }
 
-                // PERFORMANCE OPTIMIZATION (Fixes Mobile Safari frame drops):
-                // Only write to the DOM if the opacity change is visually significant (> 5%) or hitting boundaries (0 or 1)
-                const roundedTarget = Math.round(targetOpacity * 20) / 20; // steps of 0.05
-                if (Math.abs(lastOpacity.current - roundedTarget) > 0.02) {
+                // PERFORMANCE OPTIMIZATION: 
+                // Only write to the DOM if the opacity change is visually significant
+                const roundedTarget = Math.round(targetOpacity * 20) / 20; 
+                if (Math.abs(lastOpacity.current - roundedTarget) > 0.01) {
                     labelRef.current.style.opacity = roundedTarget.toFixed(2);
                     labelRef.current.style.pointerEvents = roundedTarget > 0.1 ? 'auto' : 'none';
                     lastOpacity.current = roundedTarget;
+                }
+
+                // --- CONTINUOUS DEPTH SORTING (High Precision) ---
+                // Decoupled from opacity to ensure it updates during rotation.
+                // Multiplying by 100 provides 100 steps per unit of distance,
+                // preventing overlaps for logos shifted slightly in 3D depth (e.g. vertical stacks).
+                const currentZIndex = Math.max(0, Math.round((2000 - dist) * 100));
+                if (lastZIndex.current !== currentZIndex) {
+                    labelRef.current.style.zIndex = currentZIndex.toString();
+                    lastZIndex.current = currentZIndex;
                 }
             }
         }
@@ -433,6 +489,7 @@ function Beacon({ position, companyId, isMobile, onHover, onClick }: { position:
                 ref={meshRef as any}
                 args={[0.6, 0]} // Small diamond
                 position={[0, 0, 0]} // Local 0, managed by group + useFrame
+                visible={false}
                 onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(true); }}
                 onPointerOut={(e) => { e.stopPropagation(); setHovered(false); onHover(false); }}
                 onClick={(e) => { e.stopPropagation(); onClick(); }}

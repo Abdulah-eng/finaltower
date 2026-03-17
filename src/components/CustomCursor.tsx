@@ -78,14 +78,15 @@ export default function CustomCursor() {
                 position: 'fixed',
                 top: 0,
                 left: 0,
-                width: '10px',
-                height: '10px',
+                width: isHovering ? '40px' : '20px',
+                height: isHovering ? '40px' : '20px',
                 borderRadius: '50%',
-                backgroundColor: '#d4af37',
+                backgroundColor: isHovering ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.6)',
+                border: '1px solid rgba(212, 175, 55, 0.8)',
                 pointerEvents: 'none',
                 zIndex: 9999,
                 mixBlendMode: 'difference',
-                transition: 'width 0.2s, height 0.2s, background-color 0.2s',
+                transition: 'width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s',
                 transform: 'translate(-50%, -50%)' // initial state, updated by JS
             }}
         />
