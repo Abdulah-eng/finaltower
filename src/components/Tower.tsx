@@ -6,7 +6,6 @@ import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, Box
 import { useFrame } from '@react-three/fiber';
 import { getCompanyByMesh, getCompanyById, companies } from '../data/companies';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Door from './Door';
 
 interface TowerProps {
     onSelect: (name: string, position?: Vector3) => void;
@@ -18,7 +17,9 @@ interface TowerProps {
 export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = false }: TowerProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const modelPath = isMobile ? '/models/colleseum_mobile.glb' : '/models/colleseum_final.glb';
+    // MEMORY OPT: Always use colleseum_final.glb — the mobile GLB was actually 37% LARGER
+    // (10.76MB vs 7.83MB) so it offered no benefit. One model = less total RAM.
+    const modelPath = '/models/colleseum_final.glb';
     const gltf = useGLTF(modelPath);
     // MEMORY OPTIMIZATION: Use gltf.scene directly instead of cloning (clone doubled all geometry in RAM)
     // We track modifications via refs and clean up on unmount instead.
@@ -27,7 +28,6 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
     const hiddenMeshes = useRef<Set<Mesh>>(new Set());
     const addedObjects = useRef<any[]>([]);
 
-    const [customDoors, setCustomDoors] = useState<{ id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[]>([]);
     const [beacons, setBeacons] = useState<{ id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[]>([]);
 
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
@@ -40,7 +40,6 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         const allMeshes: Mesh[] = [];
         const companyMeshes: Mesh[] = [];
         const meshesByCompany: Record<string, Mesh[]> = {};
-        const newCustomDoors: { id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[] = [];
         const newBeacons: { id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[] = [];
 
         // Pass 1: Collect meshes and identify explicit doors
@@ -74,36 +73,9 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                     companyMeshes.push(child);
                     if (!meshesByCompany[company.id]) meshesByCompany[company.id] = [];
                     meshesByCompany[company.id].push(child);
-
-                    // CUSTOM DOOR LOGIC (Desktop Only)
-                    if (!isMobile && company.doorModel && company.meshNames.includes(child.name)) {
-                        if (child.name === company.meshNames[0]) {
-                            child.visible = false; // Hide original
-
-                            // Prevent duplicates: Only add one door per company
-                            // (In case multiple meshes share the same name or logic triggers twice)
-                            const isDuplicate = newCustomDoors.some(d => d.id === company.id);
-                            if (!isDuplicate) {
-                                // INCREASE GEOMETRY: Multiply the scale so the door pops out of the archway
-                                const enlargedScale = child.scale.clone().multiplyScalar(1.15); // 15% larger
-
-                                newCustomDoors.push({
-                                    id: company.id,
-                                    modelId: company.doorModel,
-                                    position: child.getWorldPosition(new Vector3()), // Use World Position
-                                    rotation: child.rotation.clone(),
-                                    scale: enlargedScale
-                                });
-                            }
-                        } else {
-                            child.visible = false;
-                        }
-                    }
                 }
             }
         });
-
-        setCustomDoors(newCustomDoors);
 
         // Pass 2: Proximity check for orphans
         allMeshes.forEach(child => {
@@ -346,16 +318,6 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                 onPointerOut={handlePointerOut}
                 onClick={handleClick}
             />
-            {/* Render Custom Doors (Desktop Only) */}
-            {customDoors.map((door) => (
-                <Door
-                    key={door.id}
-                    modelId={door.modelId}
-                    position={door.position}
-                    rotation={door.rotation}
-                    scale={door.scale}
-                />
-            ))}
             {/* Render 3D Glowing Beacons over doors */}
             {beacons.map((beacon) => (
                 <Beacon 
@@ -536,7 +498,6 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
     );
 }
 
-// Preload main model variants only
+// Preload the main model
 useGLTF.preload('/models/colleseum_final.glb');
-useGLTF.preload('/models/colleseum_mobile.glb');
 // MEMORY OPT: Door GLBs are loaded on-demand, not preloaded, to reduce peak memory.

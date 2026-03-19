@@ -1,9 +1,7 @@
 'use client';
 
-// ... (imports remain the same)
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Stars } from '@react-three/drei';
-import { EffectComposer, Vignette, SMAA } from '@react-three/postprocessing';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
@@ -357,15 +355,6 @@ export default function Scene() {
         <Suspense fallback={null}>
             <Tower onSelect={handleSelect} onHover={setIsHovered} cameraStateRef={cameraStateRef} isMobile={isMobile} />
         </Suspense>
-
-        {/* Post Processing: ONLY on Desktop. Bloom removed to reduce render target VRAM. */}
-        {!isMobile && (
-          <EffectComposer enableNormalPass={false} multisampling={0}>
-            <SMAA />
-            {/* Vignette to focus eyes toward the center tower */}
-            <Vignette eskil={false} offset={0.25} darkness={0.6} />
-          </EffectComposer>
-        )}
 
       </Canvas>
       <div className={`absolute top-0 left-0 p-6 md:p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
