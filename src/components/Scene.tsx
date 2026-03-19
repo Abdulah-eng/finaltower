@@ -183,9 +183,8 @@ function CinematicCamera({
     // Apply Vertical Parallax to CSS Background
     if (bgRef && bgRef.current) {
       // Create vertical parallax by reading the camera's actual Y position
-      // camera.position.y scales from roughly 90 down to 5.
-      // Parallax moves the background physically up and down as we scroll the tower
-      const parallaxY = (currentPos.y - 90) * 3.5; 
+      // MEMORY OPT: Reduced height from 300vh to 150vh, so parallax travel is smaller
+      const parallaxY = (currentPos.y - 90) * 1.5; 
       bgRef.current.style.transform = `translateY(${parallaxY}px)`;
     }
   });
@@ -288,11 +287,11 @@ export default function Scene() {
 
       {/* Animated Night Sky Background (Behind Canvas) */}
       <div className="absolute inset-0 z-0 bg-[#0a0f14] overflow-hidden">
-        {/* Massive parallax container that moves up/down with scroll */}
-        <div ref={bgRef} className="absolute inset-x-0 -top-[100vh] h-[300vh] will-change-transform">
+        {/* MEMORY OPT: Container height reduced from 300vh -> 150vh */}
+        <div ref={bgRef} className="absolute inset-x-0 -top-[50vh] h-[150vh] WILL-CHANGE-TRANSFORM">
           <div className="absolute inset-0 bg-stars"></div>
-          <div className="absolute -inset-y-20 -inset-x-0 bg-clouds-1 mix-blend-screen pointer-events-none"></div>
-          <div className="absolute -inset-y-10 -inset-x-0 bg-clouds-2 mix-blend-screen pointer-events-none"></div>
+          {/* Replaced heavy SVG clouds with simple atmospheric gradient */}
+          <div className="absolute inset-0 bg-atmosphere pointer-events-none"></div>
         </div>
         
         {/* Soft vignette/gradient to blend the edges of the sky into the viewport and hide parallax edges */}
@@ -302,7 +301,7 @@ export default function Scene() {
       <Canvas
         className="z-10 relative"
         shadows={!isMobile} // Disable shadow map entirely on mobile
-        dpr={isMobile ? 1 : [1, 1.5]} // MEMORY OPT: Cap at 1.5x DPR (saves ~33% vs 2x framebuffer)
+        dpr={isMobile ? 1 : [1, 1.25]} // MEMORY OPT: Further capped at 1.25x (major VRAM savings)
         gl={{
           antialias: !isMobile, // Disable MSAA on mobile for slight perf boost
           alpha: true, // Allow the CSS animated background to show through
@@ -354,7 +353,7 @@ export default function Scene() {
         <Stars 
           radius={250} 
           depth={80} 
-          count={isMobile ? 2000 : 5000} // MEMORY OPT: Reduced from 12000 (saves geometry buffer memory)
+          count={isMobile ? 1000 : 2000} // MEMORY OPT: Reduced from 5000 (saves geometry buffers)
           factor={6} 
           saturation={0} 
           fade 

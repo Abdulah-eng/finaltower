@@ -43,27 +43,10 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         const newCustomDoors: { id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[] = [];
         const newBeacons: { id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[] = [];
 
-        // Pass 1: Collect meshes and identify explicit doors
+        // Pass 1: Identifiy meshes and custom doors
         scene.traverse((child) => {
             if (child instanceof Mesh) {
-                // MEMORY OPT: Reduce anisotropy from 16->4 (saves significant VRAM)
-                if (!isMobile && child.material) {
-                    const applyAnisotropy = (mat: any) => {
-                        if (mat.map) mat.map.anisotropy = 4;
-                        if (mat.emissiveMap) mat.emissiveMap.anisotropy = 4;
-                        if (mat.normalMap) mat.normalMap.anisotropy = 4;
-                        if (mat.roughnessMap) mat.roughnessMap.anisotropy = 4;
-                        if (mat.metalnessMap) mat.metalnessMap.anisotropy = 4;
-                    };
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach(applyAnisotropy);
-                    } else {
-                        applyAnisotropy(child.material);
-                    }
-                }
-
-                // MEMORY OPT: Disable shadow casting - shadows generated from a mesh this dense
-                // add large shadow map VRAM usage without proportional visual benefit.
+                // MEMORY OPT: Shadows and Anisotropy removed to save VRAM
                 child.castShadow = false;
                 child.receiveShadow = false;
 

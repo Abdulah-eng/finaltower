@@ -1,8 +1,8 @@
 'use client';
 
 import { useGLTF } from '@react-three/drei';
-import { Vector3, Euler, Group } from 'three';
-import { useMemo } from 'react';
+import { Vector3, Euler, Mesh } from 'three';
+import { useMemo, useEffect } from 'react';
 
 interface DoorProps {
     modelId: string; // e.g., "OP1", "PWR1"
@@ -18,19 +18,37 @@ export default function Door({ modelId, position, rotation, scale }: DoorProps) 
     // Clone the scene to allow multiple instances of the same door model
     const clonedScene = useMemo(() => scene.clone(), [scene]);
 
-    // Optimize materials - ensure they cast/receive shadows (Desktop only feature)
+    // MEMORY OPT: Disable shadows on 17 moving door instances to save significant VRAM
     useMemo(() => {
         clonedScene.traverse((child) => {
             if ((child as any).isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
+                child.castShadow = false;
+                child.receiveShadow = false;
 
                 // Ensure proper material rendering
-                if (child.userData.material) {
-                    child.userData.material.side = 2; // DoubleSide
+                if ((child as any).material) {
+                    (child as any).material.side = 2; // DoubleSide
                 }
             }
         });
+    }, [clonedScene]);
+
+    // MEMORY OPT: Explicitly dispose of cloned geometries/materials on unmount
+    useEffect(() => {
+        return () => {
+            clonedScene.traverse((child) => {
+                if (child instanceof Mesh) {
+                    child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+        };
     }, [clonedScene]);
 
     return (
