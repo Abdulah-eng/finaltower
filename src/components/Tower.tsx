@@ -43,10 +43,27 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         const newCustomDoors: { id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[] = [];
         const newBeacons: { id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[] = [];
 
-        // Pass 1: Identifiy meshes and custom doors
+        // Pass 1: Collect meshes and identify explicit doors
         scene.traverse((child) => {
             if (child instanceof Mesh) {
-                // MEMORY OPT: Shadows and Anisotropy removed to save VRAM
+                // MEMORY OPT: Reduce anisotropy from 16->4 (saves significant VRAM)
+                if (!isMobile && child.material) {
+                    const applyAnisotropy = (mat: any) => {
+                        if (mat.map) mat.map.anisotropy = 4;
+                        if (mat.emissiveMap) mat.emissiveMap.anisotropy = 4;
+                        if (mat.normalMap) mat.normalMap.anisotropy = 4;
+                        if (mat.roughnessMap) mat.roughnessMap.anisotropy = 4;
+                        if (mat.metalnessMap) mat.metalnessMap.anisotropy = 4;
+                    };
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(applyAnisotropy);
+                    } else {
+                        applyAnisotropy(child.material);
+                    }
+                }
+
+                // MEMORY OPT: Disable shadow casting - shadows generated from a mesh this dense
+                // add large shadow map VRAM usage without proportional visual benefit.
                 child.castShadow = false;
                 child.receiveShadow = false;
 
@@ -507,6 +524,8 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
                             <img 
                                 src={company.logo} 
                                 alt={company.name} 
+                                loading="lazy"
+                                decoding="async"
                                 className="w-[120px] h-[50px] object-contain drop-shadow-md" 
                             />
                         </div>
@@ -517,17 +536,7 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
     );
 }
 
-// Preload both variants
+// Preload main model variants only
 useGLTF.preload('/models/colleseum_final.glb');
 useGLTF.preload('/models/colleseum_mobile.glb');
-
-// Preload all custom door models to fix load times
-useGLTF.preload('/models/doors/OP1.glb');
-useGLTF.preload('/models/doors/OP3.glb');
-useGLTF.preload('/models/doors/OP4.glb');
-useGLTF.preload('/models/doors/PWR1.glb');
-useGLTF.preload('/models/doors/PWR3.glb');
-useGLTF.preload('/models/doors/PWR4.glb');
-useGLTF.preload('/models/doors/SP1.glb');
-useGLTF.preload('/models/doors/SP3.glb');
-useGLTF.preload('/models/doors/SP4.glb');
+// MEMORY OPT: Door GLBs are loaded on-demand, not preloaded, to reduce peak memory.

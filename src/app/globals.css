@@ -77,26 +77,38 @@ h6 {
   50% { opacity: 0.8; }
 }
 
-/* Efficient Stars Background Layer */
+/* Base Stars Layer */
 .bg-stars {
   background-image: 
     radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
     radial-gradient(1.5px 1.5px at 90px 40px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 160px 120px, rgba(212, 175, 55, 0.4), rgba(0,0,0,0)),
-    radial-gradient(1px 1px at 240px 60px, rgba(255,255,255,0.7), rgba(0,0,0,0));
+    radial-gradient(2px 2px at 160px 120px, rgba(255,237,194,0.6), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 240px 60px, rgba(255,255,255,0.7), rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 300px 180px, #ffffff, rgba(0,0,0,0));
   background-repeat: repeat;
-  background-size: 500px 500px;
+  background-size: 400px 400px;
   animation: twinkle 4s ease-in-out infinite alternate;
-  opacity: 0.3;
+  opacity: 0.5;
 }
 
-/* 
-  MEMORY OPTIMIZATION: 
-  Removed SVG feTurbulence cloud layers (300vh of noise filters).
-  Using a simple overlay for a moody atmospheric feel instead. 
-*/
-.bg-atmosphere {
-  background: radial-gradient(circle at center, rgba(16, 20, 26, 0.3) 0%, #0b1015 100%);
-  width: 100%;
-  height: 100%;
+/* Cloud Layers using SVG Data URI for soft textured noise */
+/* First Layer: Larger, slower clouds moving left */
+.bg-clouds-1 {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='%230f0d0a'/%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15' style='mix-blend-mode: color-dodge;'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 1000px 1000px;
+  width: 200%;
+  animation: moveClouds 120s linear infinite;
+  opacity: 0.6;
+}
+
+/* Second Layer: Smaller, slightly faster clouds for parallax depth */
+.bg-clouds-2 {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='%230f0d0a'/%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter2)' opacity='0.1' style='mix-blend-mode: screen;'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 600px 600px;
+  width: 200%;
+  animation: moveClouds 80s linear infinite;
+  opacity: 0.4;
 }
