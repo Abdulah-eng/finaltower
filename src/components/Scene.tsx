@@ -293,11 +293,11 @@ export default function Scene() {
       <Canvas
         className="z-10 relative"
         shadows={false} // MEMORY OPT: Shadow pipeline disabled (no mesh casts shadows anyway)
-        dpr={isMobile ? 1 : [1, 1.5]}
+        dpr={1} // MEMORY OPT: Cap at 1.0 (saves massive framebuffer VRAM compared to 1.5/2.0x)
         gl={{
-          antialias: !isMobile, // Disable MSAA on mobile for slight perf boost
+          antialias: false, // MEMORY OPT: Disable MSAA completely (saves massive render target VRAM)
           alpha: true, // Allow the CSS animated background to show through
-          powerPreference: "high-performance"
+          powerPreference: "default" // Avoid high-performance discrete GPU memory hoarding if not needed
         }}
         style={{ touchAction: 'none' }}
       >
