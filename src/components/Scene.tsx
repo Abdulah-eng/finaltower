@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Stars } from '@react-three/drei';
+import { PerspectiveCamera, Stars, Environment } from '@react-three/drei';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
@@ -338,7 +338,8 @@ export default function Scene() {
           </>
         )}
 
-        {/* MEMORY OPT: Environment HDR removed — saves 5-10MB GPU. Using manual lights instead. */}
+        {/* Restore Environment for proper PBR material reflection (metal/roughness), but lock resolution low to save VRAM */}
+        <Environment preset="city" blur={0.6} background={false} resolution={256} />
 
         {/* 3D Stars for parallax depth overlapping the CSS ambient sky and clouds */}
         {/* Dynamic count: Heavy star count on desktop, reduced count on mobile for performance */}
