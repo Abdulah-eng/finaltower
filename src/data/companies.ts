@@ -5,6 +5,7 @@ export interface Company {
     fullDescription?: string;
     logo: string;
     meshNames: string[];
+    beaconPosition?: [number, number, number]; // Virtual 3D position for logo label (overrides mesh position)
     doorModel?: string; // Phase 2 Door Model ID (e.g., "OP1", "PWR1")
     website?: string;
     content?: {
@@ -21,7 +22,8 @@ export const companies: Company[] = [
         description: "A Driver of Development and a Symbol of Trust.",
         fullDescription: "Arabian Holding Group is one of Iraq's leading companies...",
         logo: "/logos/Arabian Holding Group – Iraq.png",
-        meshNames: ["door24"],
+        meshNames: ["door16"],
+        beaconPosition: [4.66, 67, 17.39], // Tier5, angle~15°
         doorModel: "OP1",
         website: "https://arabianholdinggroup.com",
         content: [
@@ -67,7 +69,8 @@ export const companies: Company[] = [
         name: "Mawaraa Al-Bihar General Trading",
         description: "Comprehensive trading and commercial agencies.",
         logo: "/logos/Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd..png",
-        meshNames: ["door2 upper"],
+        meshNames: ["door21"],
+        beaconPosition: [-25.26, 44, -15.0], // Tier3, angle~260°
         doorModel: "OP3",
         website: "https://mawaraa-albihar.com",
         content: [
@@ -129,7 +132,8 @@ export const companies: Company[] = [
         name: "Al-Irtikaz Company",
         description: "Artistic production, marketing, and technical services.",
         logo: "/logos/Al-Irtikaz Company.png",
-        meshNames: ["door26"],
+        meshNames: ["door24"],
+        beaconPosition: [12.73, 67, -12.73], // Tier5, angle~135°
         doorModel: "OP4",
         website: "https://alirtikaz.com",
         content: [
@@ -168,7 +172,8 @@ export const companies: Company[] = [
         name: "Nidaa Al-Ard Company",
         description: "Agricultural investments and general trading.",
         logo: "/logos/Nidaa Al-Ard Company.png",
-        meshNames: ["door2 upper.001"],
+        meshNames: ["door11"],
+        beaconPosition: [26.6, 54, -4.69], // Tier4, angle~80°
         doorModel: "PWR1",
         website: "https://nidaa-alard.com",
         content: [
@@ -204,7 +209,8 @@ export const companies: Company[] = [
         name: "Al-Takween Commercial Agencies",
         description: "Your trusted partner in commercial agencies and marketing.",
         logo: "/logos/Al-Takween Commercial Agencies Company.png",
-        meshNames: ["door2 upper.002"],
+        meshNames: ["door13"],
+        beaconPosition: [-23.09, 44, -20.52], // Tier3, angle~228° (was 140° offset to 260°)
         doorModel: "PWR3",
         website: "https://altakween.com",
         content: [
@@ -245,7 +251,8 @@ export const companies: Company[] = [
         name: "Al-Arabiya International",
         description: "Your trusted partner in innovation and investment.",
         logo: "/logos/Al-Arabiya International company.png",
-        meshNames: ["door2 upper.003"],
+        meshNames: ["door15"],
+        beaconPosition: [-13.37, 54, -23.16], // Tier4, angle~200°
         doorModel: "PWR4",
         website: "https://alarabiya-international.com",
         content: [
@@ -278,7 +285,8 @@ export const companies: Company[] = [
         name: "Al-Zawraa Company",
         description: "Audio-visual broadcasting, advertising, and publishing.",
         logo: "/logos/Al-Zawraa Company for Audio-Visual Broadcasting, Advertising, Publishing, Distribution, and Marketing.png",
-        meshNames: ["door2 upper.004"],
+        meshNames: ["door26"],
+        beaconPosition: [-13.37, 54, 23.16], // Tier4, angle~320°
         doorModel: "SP1",
         website: "https://alzawraa.com",
         content: [
@@ -312,6 +320,7 @@ export const companies: Company[] = [
         description: "Your strategic partner in economic development.",
         logo: "/logos/Al-Tawasul Economic Services Company.png",
         meshNames: ["door11"],
+        beaconPosition: [0, 8, 48], // Tier1, angle~0°
         doorModel: "SP3",
         website: "https://altawasul.com",
         content: [
@@ -341,6 +350,7 @@ export const companies: Company[] = [
         description: "Your gateway to smart and comprehensive shopping.",
         logo: "/logos/Dazly General Trading & E-Commerce Company.png",
         meshNames: ["door27"],
+        beaconPosition: [26.87, 27, 26.87], // Tier2, angle~45°
         doorModel: "SP4",
         website: "https://dazly.com",
         content: [
@@ -368,6 +378,7 @@ export const companies: Company[] = [
         description: "An integrated pillar for marketing and tourism investment.",
         logo: "/logos/Arkan Al-Dar Company.png",
         meshNames: ["door13"],
+        beaconPosition: [0, 8, -48], // Tier1, angle~180°
         doorModel: "OP1",
         website: "https://arkan-aldar.com",
         content: [
@@ -396,6 +407,7 @@ export const companies: Company[] = [
         description: "Exhibitions, conferences, advertising, and catering.",
         logo: "/logos/Ameer Al-Middle East Company.png",
         meshNames: ["door25"],
+        beaconPosition: [-26.87, 27, -26.87], // Tier2, angle~225°
         doorModel: "OP3",
         website: "https://ameer-middleeast.com",
         content: [
@@ -418,6 +430,7 @@ export const companies: Company[] = [
         description: "Real estate investment and development.",
         logo: "/logos/Al-Tamaddon Company for Real Estate Investment and Development.png",
         meshNames: ["door15"],
+        beaconPosition: [-48, 8, 0], // Tier1, angle~270°
         doorModel: "OP4",
         website: "https://altamaddon.com",
         content: [
@@ -444,6 +457,7 @@ export const companies: Company[] = [
         description: "A pioneer of sustainability and green transformation.",
         logo: "/logos/Imkanat Development Company.png",
         meshNames: ["door14"],
+        beaconPosition: [-17.39, 67, -4.66], // Tier5, angle~255°
         doorModel: "PWR1",
         website: "https://imkanat.com",
         content: [
@@ -473,6 +487,7 @@ export const companies: Company[] = [
         description: "We carry Baghdad to the world.",
         logo: "/logos/Baghdad Wings Airline.png",
         meshNames: ["door16"],
+        beaconPosition: [10.24, 44, 28.19], // Tier3, angle~20°
         doorModel: "PWR3",
         website: "https://baghdadwings.com",
         content: [
@@ -499,6 +514,7 @@ export const companies: Company[] = [
         description: "Leading mobile devices and technology sector.",
         logo: "/logos/INMOBILES – FZCO.png",
         meshNames: ["door12"],
+        beaconPosition: [48, 8, 0], // Tier1, angle~90°
         doorModel: "PWR4",
         website: "https://inmobiles.com",
         content: [
@@ -524,6 +540,7 @@ export const companies: Company[] = [
         description: "A trusted partner for decades.",
         logo: "/logos/Iraqi Insurance Union.png",
         meshNames: ["door22"],
+        beaconPosition: [-26.87, 27, 26.87], // Tier2, angle~315°
         doorModel: "SP1",
         website: "https://iraqiinsurance.com",
         content: [
@@ -549,6 +566,7 @@ export const companies: Company[] = [
         description: "With your determination… we realize your ambitions.",
         logo: "/logos/HIMMATI General Trading Company.png",
         meshNames: ["door23"],
+        beaconPosition: [26.87, 27, -26.87], // Tier2, angle~135°
         doorModel: "SP3",
         website: "https://himmati.com",
         content: [

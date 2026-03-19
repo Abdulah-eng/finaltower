@@ -4,7 +4,7 @@ import { useGLTF, Octahedron, Html } from '@react-three/drei';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
 import { useFrame } from '@react-three/fiber';
-import { getCompanyByMesh, getCompanyById } from '../data/companies';
+import { getCompanyByMesh, getCompanyById, companies } from '../data/companies';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Door from './Door';
 
@@ -139,64 +139,67 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         });
 
         // Pass 3: Create Invisible Hotspots & Lights centered on the door group
-        const sliceOccupancy: { [slice: string]: string[] } = {};
-        Object.entries(meshesByCompany).forEach(([companyId, meshes]) => {
-            const firstMesh = meshes[0]?.name || "";
-            const sliceMatch = firstMesh.match(/door\d(\d)/);
-            if (sliceMatch) {
-                const slice = sliceMatch[1];
-                if (!sliceOccupancy[slice]) sliceOccupancy[slice] = [];
-                sliceOccupancy[slice].push(companyId);
-            }
-        });
-
+        // Then use virtual beaconPosition (from companies.ts) for the label, not the mesh centroid.
         Object.entries(meshesByCompany).forEach(([companyId, meshes]) => {
             if (meshes.length === 0) return;
             const firstMesh = meshes[0]?.name || "";
-            const sliceMatch = firstMesh.match(/door\d(\d)/);
-            const slice = sliceMatch ? sliceMatch[1] : null;
-            const hasVerticalPartner = slice ? sliceOccupancy[slice].length > 1 : false;
 
-            // Calculate Centroid
+            // Calculate Centroid (for hotspot click target)
             const center = new Vector3();
             meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
             center.divideScalar(meshes.length);
 
             // Create Hotspot
             const hotspotName = `hotspot_${companyId}`;
-            // Check if already exists (safeguard for React strict mode / re-renders)
             if (!scene.getObjectByName(hotspotName)) {
-                // Invisible Box for clicking the gap
-                const geometry = new BoxGeometry(4, 5, 2); // W:4, H:5, D:2 (covers door + gap)
-                const material = new MeshBasicMaterial({ visible: false }); // Invisible
+                const geometry = new BoxGeometry(4, 5, 2);
+                const material = new MeshBasicMaterial({ visible: false });
                 const hotspot = new Mesh(geometry, material);
-
                 hotspot.name = hotspotName;
                 hotspot.position.copy(center);
 
-                // Also give it a 'DoorGlow' light
                 const light = new PointLight('#ffaa00', 1.5, 12);
-                light.position.set(0, 0, 2); // Offset relative to hotspot center
+                light.position.set(0, 0, 2);
                 hotspot.add(light);
-
                 scene.add(hotspot);
-
                 hotspot.userData.companyId = companyId;
                 hotspot.userData.isHotspot = true;
 
-                // Beacon Position: above the centroid / door
-                const beaconPos = center.clone();
-                beaconPos.y += 2.0; // adjust height above door
+                // Use virtual beaconPosition if defined, otherwise fall back to mesh centroid
+                const company = getCompanyById(companyId);
+                let beaconPos: Vector3;
+                if (company?.beaconPosition) {
+                    beaconPos = new Vector3(company.beaconPosition[0], company.beaconPosition[1], company.beaconPosition[2]);
+                } else {
+                    beaconPos = center.clone();
+                    beaconPos.y += 2.0;
+                }
+
                 newBeacons.push({
                     id: companyId,
                     position: beaconPos,
                     meshName: firstMesh,
-                    hasVerticalPartner
+                    hasVerticalPartner: false
                 });
             }
         });
 
+        // Pass 4: Add virtual beacons for companies with beaconPosition but no matched meshes
+        companies.forEach(company => {
+            if (!company.beaconPosition) return;
+            if (meshesByCompany[company.id]) return; // Already handled in Pass 3
+            if (newBeacons.some(b => b.id === company.id)) return;
+
+            newBeacons.push({
+                id: company.id,
+                position: new Vector3(company.beaconPosition[0], company.beaconPosition[1], company.beaconPosition[2]),
+                meshName: '',
+                hasVerticalPartner: false
+            });
+        });
+
         setBeacons(newBeacons);
+
 
         // Update ref
         meshesByCompanyRef.current = meshesByCompany;
@@ -441,19 +444,6 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
 
                 if (isFrontFacing && dist < maxDist && dot > dotThreshold) {
                     targetOpacity = 1;
-
-                    // --- ROTATION-BASED VISIBILITY TOGGLE ---
-                    // For companies sharing a vertical slice, swap visibility at the center.
-                    if (hasVerticalPartner) {
-                        const cameraRight = new Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-                        const sideDot = beaconWorldDir.dot(cameraRight);
-                        
-                        // Door1 (Bottom) is visible on right side, Door2 (Top) on left side.
-                        // This prevents them from ever overlapping as they cross the center.
-                        const isFloor1 = meshName.includes('door1');
-                        if (isFloor1 && sideDot < 0) targetOpacity = 0;
-                        if (!isFloor1 && sideDot > 0) targetOpacity = 0;
-                    }
                 }
 
                 // Give it a significant boost if hovered
@@ -461,8 +451,7 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
                     targetOpacity = Math.max(targetOpacity, 1.0);
                 }
 
-                // PERFORMANCE OPTIMIZATION: 
-                // Only write to the DOM if the opacity change is visually significant
+                // PERFORMANCE OPTIMIZATION: Only write to the DOM if the opacity change is visually significant
                 const roundedTarget = Math.round(targetOpacity * 20) / 20; 
                 if (Math.abs(lastOpacity.current - roundedTarget) > 0.01) {
                     labelRef.current.style.opacity = roundedTarget.toFixed(2);
@@ -471,9 +460,6 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
                 }
 
                 // --- CONTINUOUS DEPTH SORTING (High Precision) ---
-                // Decoupled from opacity to ensure it updates during rotation.
-                // Multiplying by 100 provides 100 steps per unit of distance,
-                // preventing overlaps for logos shifted slightly in 3D depth (e.g. vertical stacks).
                 const currentZIndex = Math.max(0, Math.round((2000 - dist) * 100));
                 if (lastZIndex.current !== currentZIndex) {
                     labelRef.current.style.zIndex = currentZIndex.toString();
