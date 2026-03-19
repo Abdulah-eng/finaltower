@@ -4,7 +4,7 @@
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Environment, PerspectiveCamera, Sparkles, Stars, useProgress } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing';
-import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
 import Loader from './Loader';
@@ -236,30 +236,42 @@ export default function Scene() {
     }
   }, []);
 
-  const handleSelect = useCallback((meshName: string, worldPos?: Vector3) => {
+  const handleSelect = (meshName: string, worldPos?: Vector3) => {
     const company = getCompanyByMesh(meshName);
-    websiteOpened.current = false;
+    websiteOpened.current = false; // Reset on new selection attempt
     setIsTransitioning(false);
 
     if (worldPos && company) {
+      // CALCULATION FOR PORTAL PENETRATION
+      // Use the precise centroid (worldPos) from Tower.tsx
       const direction = worldPos.clone().normalize();
+
+      // Portal entry point: Move DEEP inside
+      // User Req: "move camera toward and even little inside door" -> Big negative scalar
+      // -8.0 ensures we definitely clip through the door frame before fading
       const portalTarget = worldPos.clone().add(direction.multiplyScalar(-8.0));
 
       setCameraTarget(portalTarget);
+
+      // Look EXACTLY at the center
       setLookTarget(worldPos);
       setIsFocused(true);
 
+      // REDIRECT LOGIC
+      // Wait for camera to actually get close before pushing
+      // We'll use a timeout as a fail-safe, but usually the animation takes ~1-1.5s
       if (company.id) {
+        // Trigger fade out slightly before push
         setTimeout(() => {
-          setIsTransitioning(true);
+          setIsTransitioning(true); // Trigger fade to black
         }, 800);
 
         setTimeout(() => {
           router.push(`/company/${company.id}`);
-        }, 1200);
+        }, 1200); // Tuned for arrival
       }
     }
-  }, [router]);
+  };
 
   return (
     <div className="w-full h-screen bg-[#333] relative overflow-hidden">
@@ -290,7 +302,7 @@ export default function Scene() {
       <Canvas
         className="z-10 relative"
         shadows={!isMobile} // Disable shadow map entirely on mobile
-        dpr={isMobile ? 1 : [1, 1.25]} // RADICAL MEMORY OPT: Cap at 1.25x DPR (saves ~50% VRAM vs 2x)
+        dpr={isMobile ? 1 : [1, 1.5]} // MEMORY OPT: Cap at 1.5x DPR (saves ~33% vs 2x framebuffer)
         gl={{
           antialias: !isMobile, // Disable MSAA on mobile for slight perf boost
           alpha: true, // Allow the CSS animated background to show through
@@ -335,18 +347,18 @@ export default function Scene() {
           </>
         )}
 
-        {/* Environment removed to save HDR texture VRAM and draw calls */}
+        <Environment preset="city" blur={0.6} background={false} />
 
         {/* 3D Stars for parallax depth overlapping the CSS ambient sky and clouds */}
         {/* Dynamic count: Heavy star count on desktop, reduced count on mobile for performance */}
         <Stars 
           radius={250} 
           depth={80} 
-          count={isMobile ? 1000 : 3000} // RADICAL MEMORY OPT: Further reduction
+          count={isMobile ? 2000 : 5000} // MEMORY OPT: Reduced from 12000 (saves geometry buffer memory)
           factor={6} 
           saturation={0} 
           fade 
-          speed={1.0} 
+          speed={1.5} 
         />
 
         <Suspense fallback={null}>
