@@ -213,6 +213,8 @@ export default function Scene() {
   // Also using a state to force re-render for the overlay since ref changes don't trigger render
   const websiteOpened = useRef(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  // isExiting: true when returning from company page – drives fade-in and reverse camera animation
+  const [isExiting, setIsExiting] = useState(false);
 
   // Shared Camera State for smooth transitions & exit animations
   const initialRadius = isMobile ? 150 : 110;
@@ -220,6 +222,19 @@ export default function Scene() {
     pos: new Vector3(initialRadius, 90, initialRadius),
     lookAt: new Vector3(0, 5, 0)
   });
+
+  // Detect ?exit=ID → trigger exit animation (fade from black, camera push outward)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const exitId = url.searchParams.get('exit');
+    if (exitId) {
+      // Start fully black, then fade out
+      setIsExiting(true);
+      // After a brief moment let the scene mount, then fade to transparent
+      const fadeTimer = setTimeout(() => setIsExiting(false), 1200);
+      return () => clearTimeout(fadeTimer);
+    }
+  }, []);
 
   const handleSelect = (meshName: string, worldPos?: Vector3) => {
     const company = getCompanyByMesh(meshName);
@@ -264,9 +279,11 @@ export default function Scene() {
       {/* Loading Screen Overlay */}
       <Loader />
 
-      {/* Transition Overlay (Fade to Black on Exit) */}
+      {/* Transition Overlay (Fade to Black on Entry, Fade from Black on Exit) */}
       <div
-        className={`absolute inset-0 z-40 bg-black pointer-events-none transition-opacity duration-700 ease-in ${isTransitioning ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 z-40 bg-black pointer-events-none transition-opacity duration-700 ease-in-out ${
+          isTransitioning ? 'opacity-100' : isExiting ? 'opacity-100' : 'opacity-0'
+        }`}
       />
 
       {/* Animated Night Sky Background (Behind Canvas) */}
@@ -285,7 +302,7 @@ export default function Scene() {
       <Canvas
         className="z-10 relative"
         shadows={!isMobile} // Disable shadow map entirely on mobile
-        dpr={isMobile ? 1 : [1, 2]} // Cap DPR at 1.0 for mobile (Battery/Performance saver)
+        dpr={isMobile ? 1 : [1, 1.5]} // MEMORY OPT: Cap at 1.5x DPR (saves ~33% vs 2x framebuffer)
         gl={{
           antialias: !isMobile, // Disable MSAA on mobile for slight perf boost
           alpha: true, // Allow the CSS animated background to show through
@@ -317,9 +334,7 @@ export default function Scene() {
           penumbra={1}
           intensity={3.0}
           color="#ffedc2"
-          castShadow={!isMobile}
-          shadow-mapSize={[1024, 1024]}
-          shadow-bias={-0.0001}
+          castShadow={false} // MEMORY OPT: Removed shadow map (saves shadow buffer VRAM)
         />
 
         {/* Secondary Lights: Desktop Only */}
@@ -339,7 +354,7 @@ export default function Scene() {
         <Stars 
           radius={250} 
           depth={80} 
-          count={isMobile ? 4000 : 12000} 
+          count={isMobile ? 2000 : 5000} // MEMORY OPT: Reduced from 12000 (saves geometry buffer memory)
           factor={6} 
           saturation={0} 
           fade 
@@ -352,13 +367,11 @@ export default function Scene() {
           </Suspense>
         </Suspense>
 
-        {/* Post Processing: ONLY on Desktop. Too heavy for mobile web in some cases. */}
+        {/* Post Processing: ONLY on Desktop. Bloom removed to reduce render target VRAM. */}
         {!isMobile && (
           <EffectComposer enableNormalPass={false} multisampling={0}>
             <SMAA />
-            {/* Ethereal Glow: Smooth blooming for metals and hot spots */}
-            <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} mipmapBlur intensity={0.8} />
-            {/* Dramatic Vignette to focus eyes toward the center tower */}
+            {/* Vignette to focus eyes toward the center tower */}
             <Vignette eskil={false} offset={0.25} darkness={0.6} />
           </EffectComposer>
         )}

@@ -8,6 +8,14 @@ export default function CompanyPage() {
     const params = useParams();
     const router = useRouter();
     const [company, setCompany] = useState<any>(null);
+    const [isLeaving, setIsLeaving] = useState(false);
+
+    const handleBack = () => {
+        setIsLeaving(true);
+        setTimeout(() => {
+            router.push(`/?exit=${company.id}`);
+        }, 700); // Wait for fade-to-black to complete
+    };
 
     useEffect(() => {
         if (params.id) {
@@ -27,12 +35,14 @@ export default function CompanyPage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-gray-200 selection:bg-[#d4af37] selection:text-black font-sans">
+        <div className="min-h-screen bg-[#0a0a0a] text-gray-200 selection:bg-[#d4af37] selection:text-black font-sans relative">
+            {/* Exit fade overlay */}
+            <div className={`fixed inset-0 z-[999] bg-black pointer-events-none transition-opacity duration-700 ease-in ${isLeaving ? 'opacity-100' : 'opacity-0'}`} />
             {/* Navigation Bar */}
             <nav className="fixed top-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div
-                        onClick={() => router.push(`/?exit=${company.id}`)}
+                        onClick={handleBack}
                         className="cursor-pointer group flex items-center gap-4"
                     >
                         <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:border-[#d4af37] transition-colors">

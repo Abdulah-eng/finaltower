@@ -18,26 +18,20 @@ interface TowerProps {
 export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = false }: TowerProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    // OPTIMIZED MODEL LOAD:
-    // Mobile: Load 512px textured, simplified model
-    // Desktop: Load full quality
     const modelPath = isMobile ? '/models/colleseum_mobile.glb' : '/models/colleseum_final.glb';
     const gltf = useGLTF(modelPath);
-    // CLONE SCENE to avoid polluting the global cache with our modifications (hotspots, hidden meshes)
-    // This ensures every visit starts fresh.
-    const scene = useMemo(() => gltf.scene.clone(), [gltf.scene]);
+    // MEMORY OPTIMIZATION: Use gltf.scene directly instead of cloning (clone doubled all geometry in RAM)
+    // We track modifications via refs and clean up on unmount instead.
+    const scene = gltf.scene;
+    // Track meshes we've hidden so we can restore them on unmount
+    const hiddenMeshes = useRef<Set<Mesh>>(new Set());
+    const addedObjects = useRef<any[]>([]);
 
     const [customDoors, setCustomDoors] = useState<{ id: string; modelId: string; position: Vector3; rotation: Euler; scale: Vector3 }[]>([]);
     const [beacons, setBeacons] = useState<{ id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[]>([]);
 
-    // Debug: Check distinct materials
-    useEffect(() => {
-        // ... (keep existing debug log if needed, or remove) ...
-    }, [scene]);
-
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
 
-    // Setup materials, interaction, and hotspots
     // Store meshes by company ID for efficient access
     const meshesByCompanyRef = useRef<Record<string, Mesh[]>>({});
 
@@ -52,14 +46,14 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         // Pass 1: Collect meshes and identify explicit doors
         scene.traverse((child) => {
             if (child instanceof Mesh) {
-                // Fix "Dancing Pixels": Force Anisotropy
+                // MEMORY OPT: Reduce anisotropy from 16->4 (saves significant VRAM)
                 if (!isMobile && child.material) {
                     const applyAnisotropy = (mat: any) => {
-                        if (mat.map) mat.map.anisotropy = 16;
-                        if (mat.emissiveMap) mat.emissiveMap.anisotropy = 16;
-                        if (mat.normalMap) mat.normalMap.anisotropy = 16;
-                        if (mat.roughnessMap) mat.roughnessMap.anisotropy = 16;
-                        if (mat.metalnessMap) mat.metalnessMap.anisotropy = 16;
+                        if (mat.map) mat.map.anisotropy = 4;
+                        if (mat.emissiveMap) mat.emissiveMap.anisotropy = 4;
+                        if (mat.normalMap) mat.normalMap.anisotropy = 4;
+                        if (mat.roughnessMap) mat.roughnessMap.anisotropy = 4;
+                        if (mat.metalnessMap) mat.metalnessMap.anisotropy = 4;
                     };
                     if (Array.isArray(child.material)) {
                         child.material.forEach(applyAnisotropy);
@@ -68,10 +62,11 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                     }
                 }
 
-                if (!isMobile) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
+                // MEMORY OPT: Disable shadow casting - shadows generated from a mesh this dense
+                // add large shadow map VRAM usage without proportional visual benefit.
+                child.castShadow = false;
+                child.receiveShadow = false;
+
                 allMeshes.push(child);
 
                 const company = getCompanyByMesh(child.name);
@@ -162,6 +157,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                 light.position.set(0, 0, 2);
                 hotspot.add(light);
                 scene.add(hotspot);
+                addedObjects.current.push(hotspot); // Track for cleanup
                 hotspot.userData.companyId = companyId;
                 hotspot.userData.isHotspot = true;
 
@@ -227,6 +223,25 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         }
 
     }, [scene, searchParams]);
+
+    // MEMORY: Cleanup added hotspots & restore hidden meshes when component unmounts
+    useEffect(() => {
+        return () => {
+            // Remove hotspots we added to the gltf scene (they'd persist across route changes otherwise)
+            addedObjects.current.forEach(obj => {
+                if (obj.parent) obj.parent.remove(obj);
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                    if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
+                    else obj.material.dispose();
+                }
+            });
+            addedObjects.current = [];
+            // Restore any hidden meshes
+            hiddenMeshes.current.forEach(m => { m.visible = true; });
+            hiddenMeshes.current.clear();
+        };
+    }, [scene]);
 
     // Helper to Apply Highlight to ALL meshes of a company
     const setHighlight = (companyId: string, active: boolean) => {
