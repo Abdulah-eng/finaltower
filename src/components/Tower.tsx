@@ -28,19 +28,20 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
     const hiddenMeshes = useRef<Set<Mesh>>(new Set());
     const addedObjects = useRef<any[]>([]);
 
-    const [beacons, setBeacons] = useState<{ id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[]>([]);
+    const [beacons, setBeacons] = useState<{ id: string; position: Vector3; rotation: [number, number, number]; meshName: string; hasVerticalPartner: boolean }[]>([]);
 
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
 
     // Store meshes by company ID for efficient access
     const meshesByCompanyRef = useRef<Record<string, Mesh[]>>({});
-
     // Setup materials, interaction, and hotspots
     useEffect(() => {
-        const allMeshes: Mesh[] = [];
         const companyMeshes: Mesh[] = [];
         const meshesByCompany: Record<string, Mesh[]> = {};
-        const newBeacons: { id: string; position: Vector3; meshName: string; hasVerticalPartner: boolean }[] = [];
+        const newBeacons: { id: string; position: Vector3; rotation: [number, number, number]; meshName: string; hasVerticalPartner: boolean }[] = [];
+
+        let doorTemplate: Mesh | null = null;
+        const allMeshes: Mesh[] = [];
 
         // Pass 1: Collect meshes and identify explicit doors
         scene.traverse((child) => {
@@ -65,6 +66,17 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                 // add large shadow map VRAM usage without proportional visual benefit.
                 child.castShadow = false;
                 child.receiveShadow = false;
+
+                // PASS 1.1: Identify door meshes for template and hiding
+                if (child.name.toLowerCase().includes('door')) {
+                    if (!doorTemplate) {
+                        doorTemplate = child;
+                    }
+                    // Hide original clustered doors
+                    child.visible = false;
+                    child.raycast = () => {};
+                    hiddenMeshes.current.add(child);
+                }
 
                 allMeshes.push(child);
 
@@ -105,68 +117,32 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
             }
         });
 
-        // Pass 3: Create Invisible Hotspots & Lights centered on the door group
-        // Then use virtual beaconPosition (from companies.ts) for the label, not the mesh centroid.
-        Object.entries(meshesByCompany).forEach(([companyId, meshes]) => {
-            if (meshes.length === 0) return;
-            const firstMesh = meshes[0]?.name || "";
-
-            // Calculate Centroid (for hotspot click target)
-            const center = new Vector3();
-            meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
-            center.divideScalar(meshes.length);
-
-            // Create Hotspot
-            const hotspotName = `hotspot_${companyId}`;
-            if (!scene.getObjectByName(hotspotName)) {
-                const geometry = new BoxGeometry(4, 5, 2);
-                const material = new MeshBasicMaterial({ visible: false });
-                const hotspot = new Mesh(geometry, material);
-                hotspot.name = hotspotName;
-                hotspot.position.copy(center);
-
-                const light = new PointLight('#ffaa00', 1.5, 12);
-                light.position.set(0, 0, 2);
-                hotspot.add(light);
-                scene.add(hotspot);
-                addedObjects.current.push(hotspot); // Track for cleanup
-                hotspot.userData.companyId = companyId;
-                hotspot.userData.isHotspot = true;
-
-                // Use virtual beaconPosition if defined, otherwise fall back to mesh centroid
-                const company = getCompanyById(companyId);
-                let beaconPos: Vector3;
-                if (company?.beaconPosition) {
-                    beaconPos = new Vector3(company.beaconPosition[0], company.beaconPosition[1], company.beaconPosition[2]);
-                } else {
-                    beaconPos = center.clone();
-                    beaconPos.y += 2.0;
-                }
-
-                newBeacons.push({
-                    id: companyId,
-                    position: beaconPos,
-                    meshName: firstMesh,
-                    hasVerticalPartner: false
-                });
-            }
-        });
-
-        // Pass 4: Add virtual beacons for companies with beaconPosition but no matched meshes
+        // Pass 2: Create Beacons & Virtual Doors for ALL 17 companies based on beaconPosition
         companies.forEach(company => {
             if (!company.beaconPosition) return;
-            if (meshesByCompany[company.id]) return; // Already handled in Pass 3
-            if (newBeacons.some(b => b.id === company.id)) return;
+            
+            const pos = new Vector3(company.beaconPosition[0], company.beaconPosition[1], company.beaconPosition[2]);
+            // Calculate rotation to face OUTWARD from the tower center
+            const angleY = Math.atan2(pos.x, pos.z);
 
             newBeacons.push({
                 id: company.id,
-                position: new Vector3(company.beaconPosition[0], company.beaconPosition[1], company.beaconPosition[2]),
-                meshName: '',
+                position: pos,
+                rotation: [0, angleY, 0],
+                meshName: company.meshNames[0],
                 hasVerticalPartner: false
             });
         });
 
         setBeacons(newBeacons);
+        
+        // Expose the door template to the state so Beacons can use it
+        if (doorTemplate) {
+            (window as any)._doorTemplate = {
+                geometry: (doorTemplate as Mesh).geometry,
+                material: (doorTemplate as Mesh).material
+            };
+        }
 
 
         // Update ref
@@ -318,11 +294,12 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                 onPointerOut={handlePointerOut}
                 onClick={handleClick}
             />
-            {/* Render 3D Glowing Beacons over doors */}
+            {/* Render 3D Glowing Beacons & Virtual Doors over virtual positions */}
             {beacons.map((beacon) => (
                 <Beacon 
                     key={`beacon-${beacon.id}`} 
                     position={beacon.position} 
+                    rotation={beacon.rotation as [number, number, number]}
                     companyId={beacon.id} 
                     meshName={beacon.meshName}
                     hasVerticalPartner={beacon.hasVerticalPartner}
@@ -359,8 +336,9 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 }
 
 // Beacon Component for Animation & Context-Aware Labels
-function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, onHover, onClick }: { 
+function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, isMobile, onHover, onClick }: { 
     position: Vector3, 
+    rotation: [number, number, number],
     companyId: string, 
     meshName: string,
     hasVerticalPartner: boolean,
@@ -381,22 +359,23 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
 
     useFrame((state) => {
         if (meshRef.current) {
-            // Spin
-            meshRef.current.rotation.y += 0.02;
             // Hover up and down
             const floatingY = position.y + Math.sin(state.clock.elapsedTime * 2) * 0.2;
-            meshRef.current.position.y = floatingY;
+            // Only move the label/hotspot group, keep the door static or slightly moving?
+            // User said "logos exactly on doors", so if the logo moves, the door should too?
+            // Actually, keep the door static for a more solid feel.
+            meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.2;
 
             // --- CONTEXT-AWARE LABEL LOGIC ---
             if (labelRef.current) {
                 const camera = state.camera;
 
-                // 1. Calculate Distance
-                const dist = camera.position.distanceTo(meshRef.current.position);
+                // 1. Calculate Distance (Use world position prop)
+                const dist = camera.position.distanceTo(position);
 
                 // 2. Calculate Angle (Are we looking at it?)
                 // Vector from camera to beacon
-                const toBeacon = meshRef.current.position.clone().sub(camera.position).normalize();
+                const toBeacon = position.clone().sub(camera.position).normalize();
 
                 // Camera's forward vector
                 const cameraForward = new Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -404,20 +383,20 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
                 // Dot product: 1 means looking directly at it, < 0 means it's behind us
                 const dot = cameraForward.dot(toBeacon);
 
-                // MATHEMATICAL OCCLUSION (Replaces buggy occlude="blending")
-                // Assess if the beacon is on the front side or back side of the tower relative to the camera
-                // assessed if the beacon is on the front side or back side of the tower relative to the camera
-                const beaconWorldDir = position.clone().normalize(); // Assuming tower is centered at origin [0,0,0]
-                const cameraWorldDir = camera.position.clone().normalize();
+                // MATHEMATICAL OCCLUSION
+                const beaconWorldDir = new Vector3(position.x, 0, position.z).normalize();
+                const cameraWorldDir = new Vector3(camera.position.x, 0, camera.position.z).normalize();
                 
-                // STRICTER Front-facing check (acos(0.6)*2 ≈ 106 deg arc)
-                const isFrontFacing = beaconWorldDir.dot(cameraWorldDir) > 0.5;
+                // Front-facing check: Is the beacon on the half-cylinder facing the camera?
+                // dot > 0 means the angle is < 90 degrees.
+                const isFrontFacing = beaconWorldDir.dot(cameraWorldDir) > 0.0;
 
                 let targetOpacity = 0;
 
                 // STRICTER visibility threshold to eliminate overlaps
-                const maxDist = isMobile ? 180 : 130;
-                const dotThreshold = isMobile ? 0.75 : 0.85; 
+                // Visibility threshold: Only show if within range and within FOV
+                const maxDist = isMobile ? 180 : 150;
+                const dotThreshold = isMobile ? 0.6 : 0.7; // Relaxed from 0.85
 
                 if (isFrontFacing && dist < maxDist && dot > dotThreshold) {
                     targetOpacity = 1;
@@ -446,8 +425,23 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
         }
     });
 
+    // Access door template from window (hack to avoid passing props through many layers)
+    const doorTemplate = (window as any)._doorTemplate;
+
     return (
-        <group position={position}>
+        <group position={position} rotation={rotation}>
+            {/* Virtual Door Mesh */}
+            {doorTemplate && (
+                <mesh 
+                    geometry={doorTemplate.geometry} 
+                    material={doorTemplate.material}
+                    onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(true); }}
+                    onPointerOut={(e) => { e.stopPropagation(); setHovered(false); onHover(false); }}
+                    onClick={(e) => { e.stopPropagation(); onClick(); }}
+                />
+            )}
+
+            <group ref={meshRef as any}>
             <Octahedron
                 ref={meshRef as any}
                 args={[0.6, 0]} // Small diamond
@@ -459,6 +453,7 @@ function Beacon({ position, companyId, meshName, hasVerticalPartner, isMobile, o
             >
                 <meshBasicMaterial color={hovered ? "#ffffff" : "#d4af37"} />
             </Octahedron>
+            </group>
 
             {/* The Floating Context-Aware Label (Now using Logos instead of Names) */}
             {company && (

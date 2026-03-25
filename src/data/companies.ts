@@ -210,7 +210,7 @@ export const companies: Company[] = [
         description: "Your trusted partner in commercial agencies and marketing.",
         logo: "/logos/Al-Takween Commercial Agencies Company.png",
         meshNames: ["door13"],
-        beaconPosition: [-23.09, 44, -20.52], // Tier3, angle~228° (was 140° offset to 260°)
+        beaconPosition: [29.94, 44, -8.02], // Tier3, angle~345° (moved from 222° to separate from Mawaraa)
         doorModel: "PWR3",
         website: "https://altakween.com",
         content: [
