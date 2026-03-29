@@ -6,6 +6,8 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
 import Tower from './Tower';
 import Loader from './Loader';
+import Onboarding from './Onboarding';
+import CompanyDirectory from './CompanyDirectory';
 
 import { getCompanyByMesh } from '../data/companies';
 import { useRouter } from 'next/navigation';
@@ -150,7 +152,7 @@ function CinematicCamera({
 
   useFrame((state, delta) => {
     // Higher interpolation steps to eliminate lag/inertia
-    const step = isFocused ? 0.06 : 0.8;
+    const step = isFocused ? 0.12 : 0.8;
     const currentPos = cameraStateRef.current.pos;
     const currentLookAt = cameraStateRef.current.lookAt;
 
@@ -158,6 +160,12 @@ function CinematicCamera({
       currentPos.lerp(targetPos, step);
       currentLookAt.lerp(lookAtPos, step);
     } else {
+      // SLOW IDLE ROTATION
+      // Increment angle slowly when the user is not actively dragging or focused
+      if (!isDragging.current) {
+        targetAngle.current += delta * 0.05; 
+      }
+
       // Higher lerp for immediate response
       const scrollLerp = 0.95;
       scrollY.current += (targetScrollY.current - scrollY.current) * scrollLerp;
@@ -203,6 +211,7 @@ export default function Scene() {
   const [lookTarget, setLookTarget] = useState(new Vector3(0, 10, 0));
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Reference to the CSS background container for scroll parallax
   const bgRef = useRef<HTMLDivElement>(null);
@@ -241,13 +250,11 @@ export default function Scene() {
 
     if (worldPos && company) {
       // CALCULATION FOR PORTAL PENETRATION
-      // Use the precise centroid (worldPos) from Tower.tsx
-      const direction = worldPos.clone().normalize();
-
-      // Portal entry point: Move DEEP inside
-      // User Req: "move camera toward and even little inside door" -> Big negative scalar
-      // -8.0 ensures we definitely clip through the door frame before fading
-      const portalTarget = worldPos.clone().add(direction.multiplyScalar(-8.0));
+      // Use purely horizontal direction towards the tower axis for a better "door entry" feel
+      const horizontalDir = new Vector3(worldPos.x, 0, worldPos.z).normalize();
+      
+      // Move 10 units "inward" towards the central axis
+      const portalTarget = worldPos.clone().add(horizontalDir.multiplyScalar(-10.0));
 
       setCameraTarget(portalTarget);
 
@@ -256,17 +263,15 @@ export default function Scene() {
       setIsFocused(true);
 
       // REDIRECT LOGIC
-      // Wait for camera to actually get close before pushing
-      // We'll use a timeout as a fail-safe, but usually the animation takes ~1-1.5s
       if (company.id) {
-        // Trigger fade out slightly before push
+        // Trigger fade out slightly before arrival
         setTimeout(() => {
           setIsTransitioning(true); // Trigger fade to black
-        }, 800);
+        }, 700);
 
         setTimeout(() => {
           router.push(`/company/${company.id}`);
-        }, 1200); // Tuned for arrival
+        }, 1100); 
       }
     }
   };
@@ -275,7 +280,14 @@ export default function Scene() {
     <div className="w-full h-screen bg-[#333] relative overflow-hidden">
 
       {/* Loading Screen Overlay */}
-      <Loader />
+      <Loader onComplete={() => {
+        if (!localStorage.getItem('hasSeenTowerGuide')) {
+          setShowOnboarding(true);
+        }
+      }} />
+
+      {/* Interactive User Guide (Appears on first visit after loading completes) */}
+      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
 
       {/* Transition Overlay (Fade to Black on Entry, Fade from Black on Exit) */}
       <div
@@ -285,9 +297,24 @@ export default function Scene() {
       />
 
       {/* Animated Night Sky Background (Behind Canvas) */}
-      <div className="absolute inset-0 z-0 bg-[#0a0f14] overflow-hidden">
-        {/* Single star layer for depth — cloud SVGs removed to reduce GPU compositing */}
-        <div className="absolute inset-0 bg-stars"></div>
+      <div 
+        ref={bgRef}
+        className="absolute inset-0 z-0 bg-[#0a0f14] overflow-hidden pointer-events-none"
+      >
+        {/* Layer 1: Dark Base Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#05070a] via-[#0a0f14] to-[#121820]" />
+        
+        {/* Layer 2: Moving Clouds (Back) – Lower opacity for premium feel */}
+        <div className="absolute inset-0 bg-clouds-1 opacity-20 mix-blend-screen" />
+        
+        {/* Layer 3: Static Procedural Stars Overlay */}
+        <div className="absolute inset-0 bg-stars opacity-40 ml-[-50%] w-[200%]" />
+
+        {/* Layer 4: Moving Clouds (Front) */}
+        <div className="absolute inset-0 bg-clouds-2 opacity-15 mix-blend-overlay" />
+        
+        {/* Ambient Glow Pulse */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.04)_0%,transparent_70%)] animate-pulse" />
       </div>
 
       <Canvas
@@ -374,6 +401,8 @@ export default function Scene() {
           </p>
         </div>
       </div>
+      {/* HUD: Directory Toggle Button and List */}
+      <CompanyDirectory />
     </div>
   );
 }

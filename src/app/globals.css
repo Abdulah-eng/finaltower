@@ -12,14 +12,23 @@
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: radial-gradient(circle at center, #1e2530 0%, #0b1015 100%);
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  font-family: var(--font-sans);
-  cursor: none;
-  /* Hide default cursor */
+    color: rgb(var(--foreground-rgb));
+    background: radial-gradient(circle at center, #1e2530 0%, #0b1015 100%);
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    cursor: none;
+    overflow-x: hidden;
+    /* Hide default cursor */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* Custom Cursor Dot */
@@ -111,4 +120,46 @@ h6 {
   width: 200%;
   animation: moveClouds 80s linear infinite;
   opacity: 0.4;
+}
+
+/* --- ONBOARDING ANIMATIONS --- */
+
+@keyframes handScroll {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 1; }
+  80% { transform: translateY(80px); opacity: 1; }
+  100% { transform: translateY(80px); opacity: 0; }
+}
+
+@keyframes handDrag {
+  0% { transform: translateX(50px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { transform: translateX(-50px); opacity: 1; }
+  100% { transform: translateX(-50px); opacity: 0; }
+}
+
+@keyframes handClick {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.85); }
+}
+
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+  70% { box-shadow: 0 0 0 20px rgba(212, 175, 55, 0); }
+}
+
+.animate-hand-scroll {
+  animation: handScroll 2.5s ease-in-out infinite;
+}
+
+.animate-hand-drag {
+  animation: handDrag 2.5s ease-in-out infinite;
+}
+
+.animate-hand-click {
+  animation: handClick 0.6s ease-in-out infinite;
+}
+
+.animate-pulse-gold {
+  animation: pulseGold 2s infinite;
 }

@@ -1,86 +1,89 @@
+import { Vector3 } from 'three';
+
 export interface Company {
     id: string;
     name: string;
     description: string;
+    introduction?: string;
     fullDescription?: string;
     logo: string;
     meshNames: string[];
-    beaconPosition?: [number, number, number]; // Virtual 3D position for logo label (overrides mesh position)
-    doorModel?: string; // Phase 2 Door Model ID (e.g., "OP1", "PWR1")
+    beaconPosition: [number, number, number];
+    doorModel: 'OP1' | 'OP2' | 'OP3' | 'OP4' | 'PWR1' | 'PWR2' | 'PWR3' | 'PWR4' | 'SP1' | 'SP2' | 'SP3' | 'SP4';
     website?: string;
     content?: {
         title?: string;
-        body: string | string[];
+        body?: string | string[];
         list?: string[];
     }[];
+}
+
+export function getCompanyById(id: string): Company | undefined {
+    return companies.find(c => c.id === id);
+}
+
+export function getCompanyByMesh(meshName: string): Company | undefined {
+    return companies.find(c => c.meshNames.includes(meshName));
 }
 
 export const companies: Company[] = [
     {
         id: "arabian_holding_group",
-        name: "Arabian Holding Group – Iraq",
+        name: "Arabian Holding Group - Iraq",
         description: "A Driver of Development and a Symbol of Trust.",
-        fullDescription: "Arabian Holding Group is one of Iraq's leading companies...",
-        logo: "/logos/Arabian Holding Group – Iraq.png",
+        introduction: "Arabian Holding Group is one of Iraq's leading companies, officially registered with the Ministry of Trade. It was established in 2005 in accordance with Article 21 of the Companies Law No. (21) of 1997. The Group operates with strengthened capital, reflecting its financial solidity and its capability to execute major strategic projects across Iraq.\n\nThe Group is guided by a clear vision focused on business development and the creation of effective partnerships across various sectors, with full commitment to professional and legal standards. It enhances client confidence by delivering high-quality services and projects that have a tangible economic and developmental impact.",
+        logo: "/logos/Arabian Holding Group - Iraq.png",
         meshNames: ["door16"],
-        beaconPosition: [4.66, 67, 17.39], // Tier5, angle~15°
+        beaconPosition: [0, 79, 7], // Tower Roof (Adjusted Down)
         doorModel: "OP1",
         website: "https://arabianholdinggroup.com",
         content: [
             {
-                title: "A Driver of Development and a Symbol of Trust",
-                body: "Arabian Holding Group is one of Iraq’s leading companies, officially registered with the Ministry of Trade. It was established in 2005 in accordance with Article 21 of the Companies Law No. (21) of 1997. The Group operates with strengthened capital, reflecting its financial solidity and its capability to execute major strategic projects across Iraq.\nThe Group is guided by a clear vision focused on business development and the creation of effective partnerships across various sectors, with full commitment to professional and legal standards. It enhances client confidence by delivering high-quality services and projects that have a tangible economic and developmental impact."
-            },
-            {
                 title: "About the Group",
-                body: "At the heart of Iraq’s evolving business environment, Arabian Holding Group stands out as an active economic and investment entity and a strategic partner in the journey of construction and development. Founded on an ambitious vision and a solid legacy of credibility, the Group serves as a bridge between Iraq’s promising potential and global best practices, contributing to the shaping of a sustainable economic future.\nThe Group adopts a business model based on diversification, innovation, and sustainability. Its investments go beyond projects alone to include investment in people and the national economy, through a diversified portfolio of vital sectors that contribute to infrastructure development and improved quality of life."
+                body: "At the heart of Iraq's evolving business environment, Arabian Holding Group stands out as an active economic and investment entity and a strategic partner in the journey of construction and development. Founded on an ambitious vision and a solid legacy of credibility, the Group serves as a bridge between Iraq's promising potential and global best practices, contributing to the shaping of a sustainable economic future.\n\nThe Group adopts a business model based on diversification, innovation, and sustainability. Its investments go beyond projects alone to include investment in people and the national economy, through a diversified portfolio of vital sectors that contribute to infrastructure development and improved quality of life."
             },
             {
                 title: "Our Business Sectors",
-                body: "Diversity That Supports the National Economy\nOur subsidiaries and specialized branches operate across several key development sectors, including:",
+                body: "Diversity That Supports the National Economy. Our subsidiaries and specialized branches operate across several key development sectors, including:",
                 list: [
                     "Energy and Infrastructure: Investment in conventional and renewable energy projects, the oil and gas sector, and the development of essential infrastructure.",
                     "Real Estate and Construction: Development of integrated residential, commercial, and service projects in accordance with the latest international standards of design and quality.",
                     "Industry and Agriculture: Supporting the industrial sector through manufacturing projects and strengthening agriculture to contribute to food security.",
                     "Trade and Distribution: Partnerships and representation of global brands in automobiles, equipment, technology, and consumer goods, supported by a wide distribution network.",
                     "Financial and Investment Services: Providing specialized investment solutions and advisory services, and contributing to the development of the financial sector.",
-                    "Telecommunications and Technology: Investment in digital infrastructure and modern technological services, supporting Iraq’s digital transformation journey."
+                    "Telecommunications and Technology: Investment in digital infrastructure and modern technological services, supporting Iraq's digital transformation journey."
                 ]
             },
             {
                 title: "Our Values",
-                body: "The Foundation of Your Trust\nAll our operations are built upon a solid set of values, including:",
+                body: "The Foundation of Your Trust. All our operations are built upon a solid set of values, including:",
                 list: [
                     "Commitment and Reliability: Fulfilling promises and building long-term relationships with partners and clients.",
                     "Quality and Excellence: Applying the highest standards in planning, execution, and service delivery.",
                     "Innovation and Development: Adopting innovative solutions and modern technologies to keep pace with the future.",
                     "Social Responsibility: Actively contributing to the support of education, healthcare, and environmental initiatives.",
-                    "National Partnership: Acting as a strategic partner to both the public and private sectors, with the belief that our growth is inseparable from Iraq’s growth."
+                    "National Partnership: Acting as a strategic partner to both the public and private sectors, with the belief that our growth is inseparable from Iraq's growth."
                 ]
             },
             {
                 title: "Our Vision for the Future",
-                body: "Arabian Holding Group is not merely a company, but a coalition of expertise and visions dedicated to serving Iraq and building its economy. We welcome all constructive partnership opportunities with global investors, local companies, government institutions, and ambitious Iraqi talents.\nLet us build a brighter future together.\nArabian Holding Group – Iraq\nPartners in Development… Committed to Trust"
+                body: "Arabian Holding Group is not merely a company, but a coalition of expertise and visions dedicated to serving Iraq and building its economy. We welcome all constructive partnership opportunities with global investors, local companies, government institutions, and ambitious Iraqi talents.\n\nLet us build a brighter future together.\n\nArabian Holding Group - Iraq\nPartners in Development... Committed to Trust"
             }
         ]
     },
     {
         id: "mawaraa_al_bihar",
-        name: "Mawaraa Al-Bihar General Trading",
-        description: "Comprehensive trading and commercial agencies.",
-        logo: "/logos/Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd..png",
+        name: "Mawaraa Al-Bihar",
+        description: "General Trading & Commercial Agencies Ltd.",
+        introduction: "Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd. is a private Iraqi company officially registered with the Ministry of Trade – Companies Registration Directorate of the Republic of Iraq. The company was established with a capital of IQD 100,000,000 (one hundred million Iraqi dinars), qualifying it to conduct general trading and commercial agency activities at both the local and international levels, in accordance with approved legal and professional frameworks.",
+        logo: "/logos/Mawaraa-Al-Bihar.png",
         meshNames: ["door21"],
         beaconPosition: [-25.26, 44, -15.0], // Tier3, angle~260°
         doorModel: "OP3",
         website: "https://mawaraa-albihar.com",
         content: [
             {
-                title: "Comprehensive Overview",
-                body: "Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd. is a private Iraqi company officially registered with the Ministry of Trade – Companies Registration Directorate of the Republic of Iraq. The company was established with a capital of IQD 100,000,000 (one hundred million Iraqi dinars), qualifying it to conduct general trading and commercial agency activities at both the local and international levels, in accordance with approved legal and professional frameworks."
-            },
-            {
                 title: "Basic Company Information",
-                body: "",
                 list: [
                     "Full Legal Name: Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd.",
                     "Capital: IQD 100,000,000 (One Hundred Million Iraqi Dinars)",
@@ -92,27 +95,16 @@ export const companies: Company[] = [
                 title: "Main Business Activities",
                 body: "The company operates in two principal areas that form the foundation of its business:",
                 list: [
-                    "First: General Trading — Import and export of goods and commodities of various types; Conducting domestic trade and distributing consumer and industrial products; Organizing and managing wholesale and retail buying and selling operations based on professional commercial principles.",
-                    "Second: Commercial Agencies — Representing international companies and manufacturers and obtaining exclusive commercial agencies within Iraq; Marketing, distributing, and selling the products of the companies it represents; Providing after-sales services and technical support in accordance with approved standards."
+                    "General Trading: Import and export of goods and commodities of various types; domestic trade and distribution of consumer and industrial products; and managing wholesale/retail operations.",
+                    "Commercial Agencies: Representing international companies and manufacturers to obtain exclusive agencies within Iraq; marketing, distributing, and providing after-sales support."
                 ]
             },
             {
                 title: "Vision and Mission",
-                body: "Our Vision: To be among the leading companies in the field of general trading and commercial agencies in Iraq and the region, by building strong business networks and creating sustainable added value for clients and partners.\nOur Mission: To deliver integrated and reliable commercial solutions based on product and service quality, while adhering to the highest standards of integrity, efficiency, and professionalism in all commercial transactions."
-            },
-            {
-                title: "Our Core Values",
-                body: "",
-                list: [
-                    "Trust: Building long-term relationships with clients, suppliers, and partners.",
-                    "Quality: Ensuring the selection of products and services that meet the highest standards.",
-                    "Transparency: Commitment to clarity and honesty in all dealings.",
-                    "Innovation: Adopting modern business methods and advanced technologies to keep pace with market developments."
-                ]
+                body: "Our Vision: To be among the leading companies in the field of general trading and commercial agencies in Iraq and the region, by building strong business networks and creating sustainable added value for clients and partners.\n\nOur Mission: To deliver integrated and reliable commercial solutions based on product and service quality, while adhering to the highest standards of integrity, efficiency, and professionalism in all commercial transactions."
             },
             {
                 title: "Our Services",
-                body: "Mawaraa Al-Bihar provides a comprehensive range of commercial services, including:",
                 list: [
                     "Import and Export Services: Managing and facilitating cross-border commercial and logistics operations.",
                     "Local Distribution: An efficient distribution network covering various Iraqi provinces.",
@@ -120,49 +112,47 @@ export const companies: Company[] = [
                     "Commercial Consulting: Market studies and investment opportunity analysis.",
                     "Logistics Support: Oversight of shipping, customs clearance, and warehousing operations."
                 ]
-            },
-            {
-                title: "Conclusion",
-                body: "Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd. represents a reliable commercial partner in the Iraqi market, supported by comprehensive legal, administrative, and logistical expertise. The company actively contributes to supporting the national economy by opening organized import and export channels, representing leading brands, and delivering sustainable commercial solutions that meet market needs."
             }
         ]
     },
     {
         id: "al_irtikaz",
         name: "Al-Irtikaz Company",
-        description: "Artistic production, marketing, and technical services.",
-        logo: "/logos/Al-Irtikaz Company.png",
+        description: "Integrated artistic production, marketing, and technical solutions.",
+        introduction: "Al-Irtikaz Company is a fully integrated Iraqi commercial entity, officially established under registered documentation with the Iraqi Ministry of Trade – Companies Registration Directorate. The company adopts a multi-dimensional business model that combines artistic production, marketing, publishing, and technical services under one umbrella, delivering integrated solutions to its clients.",
+        logo: "/logos/Smart-City.png",
         meshNames: ["door24"],
         beaconPosition: [12.73, 67, -12.73], // Tier5, angle~135°
         doorModel: "OP4",
         website: "https://alirtikaz.com",
         content: [
             {
-                title: "Overview",
-                body: "Al-Irtikaz Company is a fully integrated Iraqi commercial entity, officially established under registered documentation with the Iraqi Ministry of Trade – Companies Registration Directorate. The company adopts a multi-dimensional business model that combines artistic production, marketing, publishing, and technical services under one umbrella, delivering integrated solutions to its clients."
-            },
-            {
-                title: "Areas of Specialization and Services",
-                body: "",
+                title: "Legal Basis and Official Information",
                 list: [
-                    "Artistic Production and Distribution: Production of artistic and creative works of all types; Distribution of artistic products through available channels; Supporting local talents and creative content creators.",
-                    "Advertising, Publishing, and Promotion: Design and execution of integrated advertising campaigns; Provision of print and digital publishing services; Strategic advertising planning for brands; Management of social media accounts and digital platforms.",
-                    "Technical and Professional Service: Professional and artistic photography services; Electronic management solutions and digital business management; Post-production services for visual and media content."
+                    "Legal Form: Limited Liability Company (LLC)",
+                    "Capital: IQD 100,000,000 (One Hundred Million Iraqi Dinars)",
+                    "Founder: Omar Habib Abdulrazzaq",
+                    "Address: Baghdad - Al-Ghazaliya 107/5.1/1.6.17",
+                    "System Registration Number: 82690 - Al-Irtikaz",
+                    "System Entry Date: 17/03/2024"
                 ]
             },
             {
-                title: "Vision and Mission",
-                body: "Vision: To be a fundamental pillar in advancing the creative and media industry in Iraq by delivering integrated solutions that combine artistic authenticity with modern technologies.\nMission: To provide high-quality production, media, and technical services that contribute to the development of Iraq’s advertising and artistic landscape, while maintaining full compliance with professional and legal standards."
+                title: "Areas of Specialization and Services",
+                list: [
+                    "Artistic Production and Distribution: Production of artistic and creative works of all types and supporting local talents.",
+                    "Advertising, Publishing, and Promotion: Integrated advertising campaigns, digital publishing, and social media management.",
+                    "Technical and Professional Service: Professional photography, electronic management solutions, and post-production for visual media."
+                ]
             },
             {
                 title: "Core Values",
-                body: "",
                 list: [
                     "Legal Compliance: Operating strictly within approved Iraqi regulatory frameworks.",
                     "Creativity and Innovation: Delivering innovative artistic and advertising solutions.",
                     "Integration: Offering a comprehensive service package under one roof.",
                     "Professionalism: Adhering to the highest standards of quality and performance efficiency.",
-                    "Technological Advancement: Utilizing the latest management, photography, and production technologies."
+                    "Technological Advancement: Utilizing the latest management and production technologies."
                 ]
             }
         ]
@@ -170,441 +160,414 @@ export const companies: Company[] = [
     {
         id: "nidaa_al_ard",
         name: "Nidaa Al-Ard Company",
-        description: "Agricultural investments and general trading.",
-        logo: "/logos/Nidaa Al-Ard Company.png",
+        description: "Leader in modern agricultural investments and genetic research.",
+        introduction: "Nidaa Al-Ard Company is a leading Iraqi entity specializing in agricultural investments, general trading, import and export of agricultural materials and fertilizers, livestock and agricultural wealth investments, advanced agricultural services, trading of agricultural supplies and equipment, as well as the trade of crops, fertilizers, and pesticides.\n\nThe company was founded in 2024 to deliver innovative, high-quality solutions that meet the needs of local and regional markets, while contributing to the development of the agricultural sector on scientific and sustainable foundations. Nidaa Al-Ard believes that innovation, quality, and customer commitment are the core pillars of sustainable success.",
+        logo: "/logos/Desert-Star.png",
         meshNames: ["door11"],
         beaconPosition: [26.6, 54, -4.69], // Tier4, angle~80°
         doorModel: "PWR1",
         website: "https://nidaa-alard.com",
         content: [
             {
-                title: "Introduction",
-                body: "Nidaa Al-Ard Company is a leading Iraqi entity specializing in agricultural investments, general trading, import and export of agricultural materials and fertilizers, livestock and agricultural wealth investments, advanced agricultural services, trading of agricultural supplies and equipment, as well as the trade of crops, fertilizers, and pesticides. The company is established as a Limited Liability Company (LLC).\nThe company was founded in 2024 to deliver innovative, high-quality solutions that meet the needs of local and regional markets, while contributing to the development of the agricultural sector on scientific and sustainable foundations."
+                title: "A New Vision: Smart Agriculture",
+                body: "We are leading a qualitative shift from traditional to 'Smart Agriculture' through the establishment of a state-of-the-art Agricultural Genetics Laboratory. This infrastructure allows us to proactively address climate change, water scarcity, and food security by developing adapted plant varieties and improving crop productivity through biotechnology."
             },
             {
-                title: "A New Vision for Modern Agriculture",
-                body: "In light of the rapid transformations occurring in the agricultural sector, Nidaa Al-Ard Company seeks to lead the future of modern agriculture by adopting an advanced scientific approach represented by the establishment of a state-of-the-art Agricultural Genetics Laboratory as part of its infrastructure. This strategic direction represents a qualitative shift from traditional agriculture toward smart agriculture based on biotechnology and scientific research."
-            },
-            {
-                title: "Components of the Integrated Laboratory",
-                body: "",
+                title: "Genetic Research Objectives",
                 list: [
-                    "Core Laboratory Units: Genetic Analysis Unit, Tissue Culture Unit, Molecular Diagnostics Unit, Genetic Sample Storage Unit.",
-                    "Advanced Technical Equipment: PCR systems, Genetic sequencing equipment, Sterile tissue culture laboratories, Genetic data analysis systems."
+                    "Identify plant genetic traits for adaptation to local conditions.",
+                    "Tissue culture for rapid propagation of improved varieties.",
+                    "Early and accurate molecular diagnostics for plant diseases.",
+                    "Establishment of a local gene bank for plant resources."
                 ]
             },
             {
-                title: "Expected Benefits",
-                body: "",
+                title: "Strategic Impact",
                 list: [
-                    "Technical Benefits: Development of high-quality crop varieties, reduction of new variety development time, improved quality and market value, creation of a unique genetic library.",
-                    "Economic Benefits: Increase in productivity by 30-40%, reduction of production costs, diversification of revenue streams.",
-                    "Environmental Benefits: Reduction of carbon footprint, rationalization of water usage, support for sustainable agriculture."
+                    "Increase in productivity by 30% to 40%.",
+                    "Reduction of production costs through lower chemical input usage.",
+                    "Creation of high-yield strategic crops (Palms, Wheat, Barley).",
+                    "Environmental conservation through rationalized water use."
                 ]
             }
         ]
     },
     {
         id: "al_takween",
-        name: "Al-Takween Commercial Agencies",
-        description: "Your trusted partner in commercial agencies and marketing.",
-        logo: "/logos/Al-Takween Commercial Agencies Company.png",
+        name: "Al-Takween",
+        description: "Commercial Agencies Company (LLC).",
+        introduction: "Al-Takween Commercial Agencies Company (LLC) was established in accordance with the provisions of the Iraqi Companies Law No. (21) of 1997 and the Commercial Agencies Regulation Law No. (79) of 2017. The official certificate of incorporation was issued on November 1, 2023, with an authorized capital of one hundred million Iraqi dinars, reflecting the company’s seriousness and capacity to implement large-scale and diverse projects within the Iraqi market.",
+        logo: "/logos/Al-Takween.png",
         meshNames: ["door13"],
-        beaconPosition: [29.94, 44, -8.02], // Tier3, angle~345° (moved from 222° to separate from Mawaraa)
+        beaconPosition: [29.94, 44, -8.02], // Tier3
         doorModel: "PWR3",
         website: "https://altakween.com",
         content: [
             {
-                title: "Establishment and Legal Identity",
-                body: "Al-Takween Commercial Agencies Company (LLC) was established in accordance with the provisions of the Iraqi Companies Law No. (21) of 1997 and the Commercial Agencies Regulation Law No. (79) of 2017. The official certificate of incorporation was issued on November 1, 2023, with an authorized capital of one hundred million Iraqi dinars."
-            },
-            {
-                title: "Vision and Mission",
-                body: "Vision: To become the leading company in the field of commercial agencies and marketing in Iraq and the region, by building strong local and international strategic partnerships and delivering integrated commercial solutions that meet client needs.\nMission: To represent international and local companies in the Iraqi market through exclusive agencies, and to provide marketing, logistics, and consulting services in accordance with the highest standards of quality and efficiency."
-            },
-            {
-                title: "Core Business Areas and Services",
-                body: "",
+                title: "Strategic Objectives",
                 list: [
-                    "Exclusive Commercial Agencies: Representation of global brands across various sectors, including food products, pharmaceuticals, medical supplies, electrical and electronic appliances, construction materials, and others.",
-                    "Marketing and Distribution: Designing and executing comprehensive marketing strategies and managing both traditional and modern distribution channels.",
-                    "Logistics Services: Management of supply chains, warehousing, transportation, and customs clearance.",
-                    "Commercial and Legal Consultancy: Assisting companies with registration procedures, licensing, and compliance with Iraqi laws.",
-                    "Brand Management: Protecting brand identity and enhancing brand reputation."
+                    "Obtaining exclusive agencies for leading brands across multiple sectors.",
+                    "Developing modern and efficient distribution channels covering all Iraqi governorates.",
+                    "Providing commercial and legal consultancy for companies entering the Iraqi market.",
+                    "Building a specialized team in agency management and logistics."
                 ]
             },
             {
-                title: "Why Choose Al-Takween?",
-                body: "",
+                title: "Core Business Areas",
                 list: [
-                    "Officially registered and licensed by the Iraqi Companies Registration Directorate.",
-                    "Strong capital base enabling engagement in major projects.",
-                    "In-depth knowledge of the Iraqi market and regulatory procedures.",
-                    "An extensive network of relationships with government entities and the private sector.",
-                    "An experienced administrative and technical team in commercial agencies and trade."
+                    "Exclusive Commercial Agencies: Representation in food, pharmaceuticals, electronics, and construction.",
+                    "Marketing and Distribution: Designing comprehensive marketing strategies for local growth.",
+                    "Logistics Services: Management of supply chains, warehousing, and customs clearance.",
+                    "Brand Management: Protecting and enhancing brand reputation in the local market."
                 ]
+            },
+            {
+                title: "Core Values",
+                body: "Reliability, Professionalism, Transparency, and Innovation are the pillars of all our operations."
             }
         ]
     },
     {
         id: "al_arabiya_international",
         name: "Al-Arabiya International",
-        description: "Your trusted partner in innovation and investment.",
-        logo: "/logos/Al-Arabiya International company.png",
+        description: "Innovation and Investment group based in UAE.",
+        introduction: "Al-Arabiya International is a leading company founded in the heart of the United Arab Emirates, embodying the spirit of innovation and entrepreneurship that defines the UAE economy. The company was established with a bold vision to serve as a bridge for commercial and investment excellence between the Arab world and the rest of the globe.",
+        logo: "/logos/Blue-Ocean.png",
         meshNames: ["door15"],
-        beaconPosition: [-13.37, 54, -23.16], // Tier4, angle~200°
+        beaconPosition: [-13.37, 54, -23.16], // Tier4
         doorModel: "PWR4",
         website: "https://alarabiya-international.com",
         content: [
             {
-                title: "Company Overview",
-                body: "Al-Arabiya International is a leading company founded in the heart of the United Arab Emirates, embodying the spirit of innovation and entrepreneurship that defines the UAE economy. The company was established with a bold vision to serve as a bridge for commercial and investment excellence between the Arab world and the rest of the globe."
-            },
-            {
-                title: "Vision and Mission",
-                body: "Vision: To be the preferred global partner in providing integrated solutions that foster economic growth and build a sustainable future.\nMission: To deliver innovative, high-quality services and solutions that meet client expectations and contribute to sustainable growth in the communities where we operate."
+                title: "Vision",
+                body: "To be the preferred global partner in providing integrated solutions that foster economic growth and build a sustainable future through leadership, integrity, and quality."
             },
             {
                 title: "Main Business Areas",
-                body: "",
                 list: [
-                    "Real Estate Investment and Development: Development of integrated residential and commercial projects; Management of real estate investment portfolios.",
-                    "Management and Financial Consulting: Business digital transformation consultancy; Strategic planning; Preparation of economic feasibility studies.",
-                    "Logistics and Trade Services: Global supply chain management; Customs clearance services; International trade brokerage.",
-                    "Technology and Innovation: Digital transformation solutions; Application and software development; AI and data analytics services."
+                    "Real Estate Investment and Development: Residential and commercial projects and portfolio management.",
+                    "Management and Financial Consulting: Digital transformation and economic feasibility studies.",
+                    "Logistics and Trade Services: Global supply chain management and international trade brokerage.",
+                    "Technology and Innovation: AI, data analytics, and software development solutions."
                 ]
             },
             {
                 title: "Social Responsibility",
-                body: "Al-Arabiya International actively engages in serving society through youth training and employment programs, environmental sustainability initiatives, support for SMEs, and participation in charitable and humanitarian work."
+                body: "The group actively engages in youth training, environmental sustainability, and support for SMEs, contributing to community development."
             }
         ]
     },
     {
         id: "al_zawraa",
         name: "Al-Zawraa Company",
-        description: "Audio-visual broadcasting, advertising, and publishing.",
-        logo: "/logos/Al-Zawraa Company for Audio-Visual Broadcasting, Advertising, Publishing, Distribution, and Marketing.png",
+        description: "Media and Broadcast conglomerate.",
+        introduction: "Al-Zawraa Company was established in 2005 in Baghdad as a pioneering, full-service media and advertising institution. The company began its journey with a local radio station and expanded over the years to become one of the most prominent media groups in Iraq and the region.",
+        logo: "/logos/Al-Zawraa.png",
         meshNames: ["door26"],
-        beaconPosition: [-13.37, 54, 23.16], // Tier4, angle~320°
+        beaconPosition: [-13.37, 54, 23.16], // Tier4
         doorModel: "SP1",
         website: "https://alzawraa.com",
         content: [
             {
-                title: "Establishment and Identity",
-                body: "Al-Zawraa Company was established in 2005 in Baghdad as a pioneering, full-service media and advertising institution. The company began its journey with a local radio station and expanded over the years to become one of the most prominent media groups in Iraq and the region."
-            },
-            {
-                title: "Vision",
-                body: "To be the leading media destination in Iraq and the professional reference in creative content production that enriches society and conveys Iraq’s cultural and civilizational image to the world."
-            },
-            {
-                title: "Areas of Work and Services",
-                body: "",
+                title: "Broadcasting and Digital Platforms",
                 list: [
-                    "Audio and Visual Broadcasting: Al-Zawraa TV, Al-Zawraa Drama, Al-Zawraa News; Radio Stations (Al-Zawraa FM); Digital Broadcasting.",
-                    "Advertising and Publishing: Print Publishing (Al-Zawraa Cultural Magazine); Digital Publishing; Content Management.",
-                    "Distribution: Media Product Distribution; Logistics Network covering all Iraqi governorates.",
-                    "Advertising and Marketing: Integrated Advertising Campaigns; Outdoor Advertising; Digital Marketing; Event Management."
+                    "Television Channels: Al-Zawraa TV (General), Al-Zawraa Drama, Al-Zawraa News.",
+                    "Radio Stations: Al-Zawraa FM and Holy Quran Radio.",
+                    "Digital Platforms: Live streaming and smart application content production."
                 ]
             },
             {
-                title: "Key Projects",
-                body: "Media Projects include 'Memory of a Nation' award-winning documentary program and 'Read to Succeed' campaign. Advertising Projects include National domestic tourism campaign 'Discover the Beauty of Iraq'."
+                title: "Advertising and Marketing Services",
+                list: [
+                    "Integrated Campaigns: Planning and execution across all digital and traditional platforms.",
+                    "Outdoor Advertising: Strategic billing and transportation ads.",
+                    "Event Management: Organizing conferences, festivals, and exhibitions.",
+                    "Publishing: Al-Zawraa Cultural Magazine and digital blogging platforms."
+                ]
+            },
+            {
+                title: "Strategic Vision",
+                body: "To be the professional reference in creative content production that enriches society while preserving Iraqi cultural identity with authenticity and modernity."
             }
         ]
     },
     {
         id: "al_tawasul",
-        name: "Al-Tawasul Economic Services",
-        description: "Your strategic partner in economic development.",
-        logo: "/logos/Al-Tawasul Economic Services Company.png",
+        name: "Al-Tawasul",
+        description: "Economic Services and Strategic Consulting.",
+        introduction: "Al-Tawasul Economic Services Company is a specialized Iraqi economic entity established in 2023 in accordance with the provisions of Article (22) of the Iraqi Companies Law No. (21) of 1997, as amended. The company provides integrated economic and consulting solutions to both the public and private sectors. Al-Tawasul operates within a strict Iraqi legal framework and relies on a team of experts and specialists across various economic disciplines.",
+        logo: "/logos/Al-Mutamayez.png",
         meshNames: ["door11"],
-        beaconPosition: [0, 8, 48], // Tier1, angle~0°
+        beaconPosition: [0, 8, 48], // Tier1
         doorModel: "SP3",
         website: "https://altawasul.com",
         content: [
             {
-                title: "Overview",
-                body: "Al-Tawasul Economic Services Company is a specialized Iraqi economic entity established in 2023. The company provides integrated economic and consulting solutions to both the public and private sectors. Al-Tawasul operates within a strict Iraqi legal framework and relies on a team of experts and specialists."
-            },
-            {
                 title: "Strategic Areas of Operation",
-                body: "",
                 list: [
-                    "Economic Consulting Services: Analysis of macroeconomic and microeconomic indicators; Preparation of economic feasibility studies; Financial and investment advisory.",
-                    "Financial and Banking Services: Banking and financial consulting; Analysis of financing structures; Strategic financial planning.",
-                    "Investment and Development Services: Identification of promising investment opportunities; Design of economic business models.",
-                    "Economic Research and Studies: Market and sector research; Competitiveness and sustainability studies."
+                    "Economic Consulting: Macro/Micro indicators and feasibility studies.",
+                    "Financial & Banking: Financing structures and risk assessment.",
+                    "Investment Services: Identification of promising opportunities and portfolio management.",
+                    "Macro Research: Market competitiveness and sustainability studies."
                 ]
             },
             {
                 title: "Competitive Advantages",
-                body: "Deep Local Expertise with in-depth understanding of the Iraqi economic environment; Specialized Competencies with a team of experienced Iraqi and international consultants; Scientific Methodology applying internationally recognized research methods."
+                list: [
+                    "Deep Local Expertise: In-depth understanding of the Iraqi economic environment.",
+                    "Specialized Competencies: Team of Iraqi experts and international consultants.",
+                    "Scientific Methodology: Application of internationally recognized research standards."
+                ]
+            },
+            {
+                title: "Vision",
+                body: "To become the leading reference for integrated economic solutions in Iraq and an active contributor to national economic development through professionalism and integrity."
             }
         ]
     },
     {
         id: "dazly",
-        name: "Dazly General Trading",
-        description: "Your gateway to smart and comprehensive shopping.",
-        logo: "/logos/Dazly General Trading & E-Commerce Company.png",
+        name: "Dazly",
+        description: "General Trading & E-Commerce Company.",
+        introduction: "Dazly was established as an ambitious venture aiming to redefine the concept of e-commerce and general trading by combining variety, quality, and an outstanding user experience. We are more than just an online marketplace; we are a trusted partner that meets the needs of individuals and families across all aspects of daily life.",
+        logo: "/logos/Al-Rayyan.png",
         meshNames: ["door27"],
-        beaconPosition: [26.87, 27, 26.87], // Tier2, angle~45°
+        beaconPosition: [26.87, 27, 26.87], // Tier2
         doorModel: "SP4",
         website: "https://dazly.com",
         content: [
             {
-                title: "Executive Summary",
-                body: "Dazly was established as an ambitious venture aiming to redefine the concept of e-commerce and general trading by combining variety, quality, and an outstanding user experience. We are more than just an online marketplace; we are a trusted partner that meets the needs of individuals and families across all aspects of daily life."
-            },
-            {
                 title: "Business Scope",
-                body: "Dazly offers a comprehensive general trading model that includes Consumer goods & online supermarket, Electronics & accessories, Fashion & apparel, Home & décor products, Health & beauty products, and Sports & hobby supplies."
+                list: [
+                    "Consumer Goods: Online supermarket for food and personal care.",
+                    "Electronics: Smartphones, tablets, and smart home devices.",
+                    "Fashion: Apparel and accessories for all ages.",
+                    "Home & Décor: Furniture and kitchenware.",
+                    "Health & Beauty: Curated wellness products."
+                ]
             },
             {
-                title: "The Digital Platform & User Experience",
-                body: "Features include a clean and intuitive design, smart search and precise categorization, multiple secure payment options (Cash on delivery, credit cards, digital wallets), an advanced order tracking system, and a user-friendly mobile application."
+                title: "The Digital Experience",
+                body: "Our platform offers intuitive design, smart search, secure payments (including Cash on Delivery and Digital Wallets), and advanced order tracking for a seamless shopping journey."
             },
             {
-                title: "Competitive Advantages",
-                body: "All-in-one platform; Unique blend of open marketplace and specialized stores; Trust & transparency; Smooth user experience; Local expertise with global standards."
+                title: "Competitive Edge",
+                body: "By working with certified suppliers and maintaining smart warehouses, Dazly ensures fast delivery and exceptional value through a unique blend of global standards and local expertise."
             }
         ]
     },
     {
         id: "arkan_al_dar",
-        name: "Arkan Al-Dar Company",
-        description: "An integrated pillar for marketing and tourism investment.",
-        logo: "/logos/Arkan Al-Dar Company.png",
+        name: "Arkan Al-Dar",
+        description: "Marketing and Tourism Investment group.",
+        introduction: "Arkan Al-Dar is a leading multi-activity company providing integrated solutions in commercial marketing, advertising, and tourism investments. Established in 2015, the company was founded with an ambitious vision that blends innovation with tradition, positioning itself as a strategic partner for success in both local and regional markets. The company adopts the philosophy of “The Integrated Pillar,” combining excellence in creative services with smart investment solutions.",
+        logo: "/logos/Golden-Sand.png",
         meshNames: ["door13"],
-        beaconPosition: [0, 8, -48], // Tier1, angle~180°
+        beaconPosition: [0, 8, -48], // Tier1
         doorModel: "OP1",
         website: "https://arkan-aldar.com",
         content: [
             {
-                title: "Company Overview",
-                body: "Arkan Al-Dar is a leading multi-activity company providing integrated solutions in commercial marketing, advertising, and tourism investments. Established in 2015, the company was founded with an ambitious vision that blends innovation with tradition, positioning itself as a strategic partner for success."
-            },
-            {
                 title: "Main Business Areas",
-                body: "",
                 list: [
-                    "Integrated Commercial Marketing: Strategic Planning, Digital Marketing, Creative Traditional Marketing, Market Research, Brand Management.",
-                    "Comprehensive Advertising Services: Creative Design, Multimedia Production, Event Management, Outdoor Advertising.",
-                    "Advanced Tourism Investments: Tourism Project Development, Tourism Facility Management, Sustainable Tourism Investment, Medical & Leisure Tourism."
+                    "Integrated Marketing: Strategic planning, digital marketing, and brand management.",
+                    "Advertising Services: Creative design, multimedia production, and event management.",
+                    "Tourism Investments: Development and management of hotels, resorts, and sustainable tourism projects."
                 ]
             },
             {
                 title: "Key Projects",
-                body: "Marketing Projects include launch campaigns for local brands and visual identity development. Tourism Investments include 'Arkan Oasis' Tourism Resort, 'Dar Al-Diyafa' Hotel, and 'Heritage Route' Cultural Tourism Project."
+                list: [
+                    "Arkan Oasis Tourism Resort",
+                    "Dar Al-Diyafa Hotel Management",
+                    "Heritage Route Cultural Tourism Project"
+                ]
+            },
+            {
+                title: "Core Values",
+                body: "Creativity, Excellence, Partnership, and Social Responsibility guided by an integrated approach that saves clients time and effort."
             }
         ]
     },
     {
         id: "ameer_al_middle_east",
         name: "Ameer Al-Middle East",
-        description: "Exhibitions, conferences, advertising, and catering.",
-        logo: "/logos/Ameer Al-Middle East Company.png",
+        description: "Events, Advertising, and Catering specialists.",
+        introduction: "Ameer Al-Middle East Company is a private Iraqi limited liability company specializing in delivering an integrated package of technical, organizational, and logistical services across the fields of events management, marketing, and food services. The company was officially established and obtained its legal license from the relevant Iraqi authorities, positioning itself as a trusted partner in managing major events and occasions, as well as executing marketing and advertising campaigns with high efficiency and professionalism.",
+        logo: "/logos/Al-Tafani.png",
         meshNames: ["door25"],
-        beaconPosition: [-26.87, 27, -26.87], // Tier2, angle~225°
+        beaconPosition: [-26.87, 27, -26.87], // Tier2
         doorModel: "OP3",
         website: "https://ameer-middleeast.com",
         content: [
             {
-                title: "Overview",
-                body: "Ameer Al-Middle East Company is a private Iraqi limited liability company specializing in delivering an integrated package of technical, organizational, and logistical services across the fields of events management, marketing, and food services. The company was officially established and obtained its legal license from the relevant Iraqi authorities."
+                title: "Main Services",
+                list: [
+                    "Event Organization: Planning and execution of exhibitions, conferences, and seminars.",
+                    "Advertising & Promotion: Comprehensive campaigns, public relations, and visual identity design.",
+                    "Catering & Hospitality: Provision of banquet services, cafeterias, and hospitality solutions for corporate events."
+                ]
             },
             {
-                title: "Main Fields & Services",
-                body: "",
-                list: [
-                    "Event Organization & Management: Full planning and execution of commercial and specialized exhibitions; Organization of conferences usually."
-                ]
+                title: "Legal Structure",
+                body: "As a Private Limited Liability Company, we are legally equipped to deliver services throughout Iraq, acting as a trusted partner for large-scale projects and exhibitions."
             }
         ]
     },
     {
         id: "al_tamaddon",
         name: "Al-Tamaddon Real Estate",
-        description: "Real estate investment and development.",
-        logo: "/logos/Al-Tamaddon Company for Real Estate Investment and Development.png",
+        description: "Urban investment and development (1 Billion IQD Capital).",
+        introduction: "Al-Tamaddon Company for Real Estate Investment and Development is a private Iraqi limited liability company, officially registered with the Ministry of Trade – Companies Registration Department. The company was established with a capital of one billion Iraqi dinars, reflecting its financial strength and firm commitment to actively contributing to the development of the real estate investment sector in Iraq.",
+        logo: "/logos/Al-Jawda.png",
         meshNames: ["door15"],
-        beaconPosition: [-48, 8, 0], // Tier1, angle~270°
+        beaconPosition: [-48, 8, 0], // Tier1
         doorModel: "OP4",
         website: "https://altamaddon.com",
         content: [
             {
-                title: "Introduction",
-                body: "Al-Tamaddon Company for Real Estate Investment and Development is a private Iraqi limited liability company, officially registered with the Ministry of Trade. The company was established with a capital of one billion Iraqi dinars, reflecting its financial strength."
+                title: "Core Activities",
+                list: [
+                    "Residential Projects: Design and execution of modern complexes.",
+                    "Commercial Projects: Development of shopping centers and administrative offices.",
+                    "Consultancy: Real estate feasibility studies and investment advisory.",
+                    "Property Management: Professional operation of completed assets."
+                ]
             },
             {
-                title: "Company Services",
-                body: "",
-                list: [
-                    "Residential Project Development: Design and execution of modern, integrated residential complexes.",
-                    "Commercial Projects: Development of modern shopping centers and administrative offices.",
-                    "Real Estate Consultancy: Providing feasibility studies and specialized investment consultancy.",
-                    "Property Management: Operation and management of properties after project completion.",
-                    "Integrated Urban Development: Projects that include infrastructure, service facilities, and public spaces."
-                ]
+                title: "Vision",
+                body: "To be a leading company in real estate development in Iraq, focusing on quality, innovation, and sustainability across all urban infrastructure projects."
             }
         ]
     },
     {
         id: "imkanat",
-        name: "Imkanat Development Company",
-        description: "A pioneer of sustainability and green transformation.",
-        logo: "/logos/Imkanat Development Company.png",
+        name: "Imkanat Development",
+        description: "Sustainability and Green Transformation pioneer.",
+        introduction: "Imkanat Development Company was established as an ambitious national enterprise aiming to actively contribute to urban, economic, and service-sector development. We do not provide isolated services; rather, we operate as an integrated system that connects all stages of development—from concept to operation and management.\n\nIn the heart of Baghdad, where civilization and history intersect with the challenges of the modern era, Imkanat Development emerges with a revolutionary vision that redefines real estate investment and urban development. Our flagship project, “Sustainable Forests in Baghdad,” stands as a practical declaration of our commitment to building a green and sustainable future for Iraq.",
+        logo: "/logos/Imkanat.png",
         meshNames: ["door14"],
-        beaconPosition: [-17.39, 67, -4.66], // Tier5, angle~255°
+        beaconPosition: [-17.39, 67, -4.66], // Tier5
         doorModel: "PWR1",
         website: "https://imkanat.com",
         content: [
             {
-                title: "Introduction",
-                body: "Imkanat Development Company was established as an ambitious national enterprise aiming to actively contribute to urban, economic, and service-sector development. We operate as an integrated system that connects all stages of development—from concept to operation and management."
-            },
-            {
-                title: "Integrated Business Sectors",
-                body: "",
+                title: "Vision and Mission",
                 list: [
-                    "General Trading: Import and supply of construction materials.",
-                    "Public Transportation and Logistics Solutions: Modern, safe fleet providing smart transport solutions.",
-                    "General Contracting and Urban Development: Execution of residential and commercial projects.",
-                    "Real Estate Investment and Development: Land acquisition and property development."
+                    "General Trading: Supply of construction and industrial materials.",
+                    "Public Transportation: Modern and safe logistical fleet.",
+                    "General Contracting: Urban development and management of major projects.",
+                    "Real Estate Investment: Strategic land acquisition and portfolio management."
                 ]
             },
             {
-                title: "Flagship Project: 'Sustainable Forests' in Baghdad",
-                body: "Features Green Infrastructure (rainwater drainage), Smart Community Spaces (walking paths), Low-Density Residential Units (sustainable villas), and an Environmental Community Center."
+                title: "Sustainable Forests in Baghdad",
+                body: "Our flagship project features green infrastructure, rainwater reuse, smart community spaces, and low-density residential units with solar energy and thermal insulation, promoting a healthy environment for future generations."
             }
         ]
     },
     {
         id: "baghdad_wings",
         name: "Baghdad Wings Airline",
-        description: "We carry Baghdad to the world.",
-        logo: "/logos/Baghdad Wings Airline.png",
+        description: "Iraq's private airline and air cargo service.",
+        introduction: "Baghdad Wings Airline – LLC was established as a private aviation company aiming to provide high-quality commercial aviation and air cargo services, with a strong focus on connecting Iraq with regional and international destinations. We operate with the authentic spirit of Iraq and a modern aviation vision, contributing to rebuilding Iraq’s image as a key logistical and aviation hub in the region.",
+        logo: "/logos/Baghdad-Wings.png",
         meshNames: ["door16"],
-        beaconPosition: [10.24, 44, 28.19], // Tier3, angle~20°
+        beaconPosition: [10.24, 44, 28.19], // Tier3
         doorModel: "PWR3",
         website: "https://baghdadwings.com",
         content: [
             {
-                title: "Establishment and Identity",
-                body: "Baghdad Wings Airline – LLC was established as a private aviation company aiming to provide high-quality commercial aviation and air cargo services, with a strong focus on connecting Iraq with regional and international destinations."
+                title: "Operational Sectors",
+                list: [
+                    "Commercial Aviation: Scheduled flights with Economy and Business Class services.",
+                    "Air Cargo: Reliable and fast cargo services for goods and documents.",
+                    "Ground Handling: Managing airport check-in, baggage, and ground logistics.",
+                    "Tourism: Integrated packages in cooperation with global travel agencies."
+                ]
             },
             {
-                title: "Operational Sectors",
-                body: "",
-                list: [
-                    "Commercial Aviation: Domestic, regional, and international flights.",
-                    "Air Cargo: Fast and reliable cargo services.",
-                    "Ground Handling Services: Airport ground services management.",
-                    "Tourism and Travel: Integrated travel and tourism packages.",
-                    "Aircraft Leasing: Providing aircraft for private charter."
-                ]
+                title: "Safety and Quality",
+                body: "We fly with confidence, adhering to the highest international safety standards while representing Iraq's heritage through premium hospitality and modern fleet efficiency."
             }
         ]
     },
     {
         id: "inmobiles",
-        name: "INMOBILES – FZCO",
-        description: "Leading mobile devices and technology sector.",
-        logo: "/logos/INMOBILES – FZCO.png",
+        name: "INMOBILES - FZCO",
+        description: "Mobile technology and telecommunications branch.",
+        introduction: "INMOBILES – FZCO is a foreign company registered in the United Arab Emirates and has obtained an official license to establish a branch in the Republic of Iraq pursuant to a decision issued by the Iraqi Ministry of Trade – Companies Registration Department – Foreign Companies Section. This license reflects the company’s commitment to strategic expansion and investment in the Iraqi market, in full compliance with applicable legal and regulatory frameworks.",
+        logo: "/logos/INMOBILES - FZCO.png",
         meshNames: ["door12"],
-        beaconPosition: [48, 8, 0], // Tier1, angle~90°
+        beaconPosition: [48, 8, 0], // Tier1
         doorModel: "PWR4",
         website: "https://inmobiles.com",
         content: [
             {
-                title: "Introduction",
-                body: "INMOBILES – FZCO is a foreign company registered in the United Arab Emirates and has obtained an official license to establish a branch in the Republic of Iraq. This license reflects the company’s commitment to strategic expansion and investment in the Iraqi market."
+                title: "Main Business Activities",
+                list: [
+                    "Distribution: Import and sale of smartphones and electronic accessories.",
+                    "Technical Support: Provision of after-sales service and maintenance.",
+                    "Marketing: Digital solutions and exclusive agency representation for global brands.",
+                    "Logistics: Supply chain management and smart storage systems."
+                ]
             },
             {
-                title: "Main Business Activities",
-                body: "",
-                list: [
-                    "Import and distribution of smartphones, tablets, and electronic devices.",
-                    "Provision of after-sales services and maintenance.",
-                    "Digital marketing and technical solutions related to mobile devices.",
-                    "Contracting with global brands to obtain exclusive agency representation."
-                ]
+                title: "Vision",
+                body: "To be the leading technology partner in Iraq, expanding access to modern products while adhering to international standards of quality and efficiency."
             }
         ]
     },
     {
         id: "iraqi_insurance",
         name: "Iraqi Insurance Union",
-        description: "A trusted partner for decades.",
-        logo: "/logos/Iraqi Insurance Union.png",
+        description: "Foundational pillar of Iraq's insurance sector.",
+        introduction: "Iraqi Insurance Union is one of the historic and foundational pillars of Iraq’s insurance sector. Established on principles that combine heritage and modernity, it has become a leading company providing comprehensive insurance solutions that protect individuals, businesses, and assets. We are not just a company selling insurance policies; we are a true partner in your life and success, building a protective shield that preserves your achievements and eases your concerns about the future.",
+        logo: "/logos/Al-Asriya.png",
         meshNames: ["door22"],
-        beaconPosition: [-26.87, 27, 26.87], // Tier2, angle~315°
+        beaconPosition: [-26.87, 27, 26.87], // Tier2
         doorModel: "SP1",
         website: "https://iraqiinsurance.com",
         content: [
             {
-                title: "Overview",
-                body: "Iraqi Insurance Union is one of the historic and foundational pillars of Iraq’s insurance sector. Established on principles that combine heritage and modernity, it has become a leading company providing comprehensive insurance solutions that protect individuals, businesses, and assets."
+                title: "Insurance Portfolios",
+                list: [
+                    "Personal & Health: Life, medical network, and personal accident coverage.",
+                    "Property & Risks: Fire, theft, vehicle, and engineering risk insurance.",
+                    "Commercial: Employee liability, cash in transit, and investment portfolios.",
+                    "Specialized: Hajj & Umrah protection for Iraqi citizens."
+                ]
             },
             {
-                title: "Insurance Areas and Specialized Services",
-                body: "",
-                list: [
-                    "Personal Insurance & Health Coverage: Life, Health, Personal Accident, and Travel Insurance.",
-                    "Property and Engineering Risk Insurance: Fire, Vehicle, Transportation, and Engineering Insurance.",
-                    "Corporate & Commercial Risk Insurance: Liability, Cash in transit, Professional indemnity.",
-                    "Hajj & Umrah Insurance: Comprehensive protection for pilgrims."
-                ]
+                title: "Why Choose Us?",
+                body: "Our historical reputation for fair claims settlement, financial stability, and global reinsurance partnerships ensures maximum security for our clients."
             }
         ]
     },
     {
         id: "himmati",
-        name: "HIMMATI General Trading",
-        description: "With your determination… we realize your ambitions.",
-        logo: "/logos/HIMMATI General Trading Company.png",
+        name: "HIMMATI",
+        description: "General Trading Company.",
+        introduction: "HIMMATI General Trading Company was founded on a simple yet powerful principle: to be a trustworthy commercial partner dedicated to achieving the ambitions of its clients and partners with seriousness and integrity. The name “HIMMATI” reflects a spirit of commitment and high ambition in every transaction, deal, and business relationship, serving as a bridge between local and global markets, and turning ideas into reality with efficiency and transparency.",
+        logo: "/logos/Al-Furaat.png",
         meshNames: ["door23"],
-        beaconPosition: [26.87, 27, -26.87], // Tier2, angle~135°
+        beaconPosition: [26.87, 27, -26.87], // Tier2
         doorModel: "SP3",
         website: "https://himmati.com",
         content: [
             {
-                title: "Introduction",
-                body: "HIMMATI General Trading Company was founded on a simple yet powerful principle: to be a trustworthy commercial partner dedicated to achieving the ambitions of its clients and partners with seriousness and integrity."
+                title: "Business Scope",
+                list: [
+                    "Import/Export: Food, construction materials, and household appliances.",
+                    "Distribution: Nationwide network covering cooperatives and hypermarkets.",
+                    "Contracts: Supplying materials to government and private institutions.",
+                    "E-Commerce: B2B platform for specialized trader services."
+                ]
             },
             {
-                title: "Business Areas and Scope",
-                body: "",
-                list: [
-                    "Import and Export of General Goods: Food, Construction Materials, Household Goods, FMCG.",
-                    "Local Distribution and Marketing: Nationwide distribution network.",
-                    "Government Contracts and Institutional Supply.",
-                    "E-Commerce Services (B2B)."
-                ]
+                title: "Service Strength",
+                body: "With a global network of approved factories and a specialized logistics team, HIMMATI provides high-quality products at competitive prices with full financial transparency."
             }
         ]
     }
 ];
-
-export const getCompanyByMesh = (meshName: string) => {
-    let bestMatch: Company | null = null;
-    let longestMatchLength = -1;
-
-    for (const company of companies) {
-        for (const targetName of company.meshNames) {
-            if (meshName === targetName || meshName.startsWith(`${targetName}.`)) {
-                if (targetName.length > longestMatchLength) {
-                    longestMatchLength = targetName.length;
-                    bestMatch = company;
-                }
-            }
-        }
-    }
-    return bestMatch;
-};
-
-export const getCompanyById = (id: string) => {
-    return companies.find(c => c.id === id);
-};

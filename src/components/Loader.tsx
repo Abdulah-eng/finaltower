@@ -1,18 +1,22 @@
 import { useProgress } from '@react-three/drei';
 import { useEffect, useState } from 'react';
 
-export default function Loader() {
+export default function Loader({ onComplete }: { onComplete?: () => void }) {
     const { progress } = useProgress();
     const [finished, setFinished] = useState(false);
 
     useEffect(() => {
         if (progress === 100) {
-            const timer = setTimeout(() => setFinished(true), 500);
+            const timer = setTimeout(() => {
+                setFinished(true);
+                if (onComplete) onComplete();
+            }, 500);
             return () => clearTimeout(timer);
         }
-    }, [progress]);
+    }, [progress, onComplete]);
 
     if (finished) return null;
+
 
     return (
         <div

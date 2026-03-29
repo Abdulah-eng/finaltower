@@ -319,15 +319,9 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                 }} onClick={() => {
                     const company = getCompanyById(beacon.id);
                     if (company) {
-                        const meshes = meshesByCompanyRef.current[company.id];
-                        let targetPoint = beacon.position;
-                        if (meshes && meshes.length > 0) {
-                            const center = new Vector3();
-                            meshes.forEach(m => center.add(m.getWorldPosition(new Vector3())));
-                            center.divideScalar(meshes.length);
-                            targetPoint = center;
-                        }
-                        onSelect(company.meshNames[0], targetPoint);
+                        // All companies now use the exact beacon.position for camera targeting
+                        // Since we have Virtual Doors, this ensures the camera stays aligned with the logo
+                        onSelect(company.meshNames[0], beacon.position);
                     }
                 }} />
             ))}
@@ -388,17 +382,19 @@ function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, i
                 const cameraWorldDir = new Vector3(camera.position.x, 0, camera.position.z).normalize();
                 
                 // Front-facing check: Is the beacon on the half-cylinder facing the camera?
-                // dot > 0 means the angle is < 90 degrees.
                 const isFrontFacing = beaconWorldDir.dot(cameraWorldDir) > 0.0;
+
+                // SPECIAL EXCEPTION: Logos on the ROOF (y > 75) should be visible from more angles 
+                // because they aren't occluded by the tower walls at the same level.
+                const isRoofLogo = position.y > 75;
 
                 let targetOpacity = 0;
 
                 // STRICTER visibility threshold to eliminate overlaps
-                // Visibility threshold: Only show if within range and within FOV
                 const maxDist = isMobile ? 180 : 150;
                 const dotThreshold = isMobile ? 0.6 : 0.7; // Relaxed from 0.85
 
-                if (isFrontFacing && dist < maxDist && dot > dotThreshold) {
+                if ((isFrontFacing || isRoofLogo) && dist < maxDist && dot > dotThreshold) {
                     targetOpacity = 1;
                 }
 
@@ -412,6 +408,8 @@ function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, i
                 if (Math.abs(lastOpacity.current - roundedTarget) > 0.01) {
                     labelRef.current.style.opacity = roundedTarget.toFixed(2);
                     labelRef.current.style.pointerEvents = roundedTarget > 0.1 ? 'auto' : 'none';
+                    // Prevent black artifacts by hiding completely when target is 0
+                    labelRef.current.style.visibility = roundedTarget > 0.05 ? 'visible' : 'hidden';
                     lastOpacity.current = roundedTarget;
                 }
 
