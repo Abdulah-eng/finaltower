@@ -1,6 +1,6 @@
 'use client';
 
-import { useGLTF, Octahedron, Html } from '@react-three/drei';
+import { useGLTF, Octahedron, Html, Sparkles } from '@react-three/drei';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
 import { useFrame } from '@react-three/fiber';
@@ -350,6 +350,7 @@ function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, i
 
     // Get company name safely
     const company = getCompanyById(companyId);
+    const isMother = companyId === 'arabian_holding_group';
 
     useFrame((state) => {
         if (meshRef.current) {
@@ -451,6 +452,9 @@ function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, i
             >
                 <meshBasicMaterial color={hovered ? "#ffffff" : "#d4af37"} />
             </Octahedron>
+            {isMother && (
+                <Sparkles count={40} scale={5} size={6} speed={0.4} opacity={0.8} color="#d4af37" />
+            )}
             </group>
 
             {/* The Floating Context-Aware Label (Now using Logos instead of Names) */}
@@ -471,17 +475,26 @@ function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, i
                         onPointerOut={(e) => { e.stopPropagation(); setHovered(false); onHover(false); }}
                     >
                         {/* Premium Logo styling (Light frosted glass for original colors) */}
-                        <div className="p-2 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center justify-center min-w-[80px] min-h-[50px] relative overflow-hidden group hover:border-[#d4af37]/50 transition-colors">
+                        <div className={`p-2 bg-white/10 backdrop-blur-xl rounded-xl border ${isMother ? 'border-[#d4af37] shadow-[0_0_40px_rgba(212,175,55,0.6)]' : 'border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)]'} flex flex-col items-center justify-center ${isMother ? 'min-w-[140px] min-h-[80px]' : 'min-w-[80px] min-h-[50px]'} relative overflow-hidden group hover:border-[#d4af37]/50 transition-all duration-300`}>
                             {/* Subtle shine effect */}
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] animate-[shimmer_3s_infinite]"></div>
                             
+                            {isMother && (
+                                <div className="flex flex-col items-center mb-1">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_10px_rgba(212,175,55,1)]">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#d4af37" fillOpacity="0.5"/>
+                                    </svg>
+                                    <span className="text-[#d4af37] text-[11px] font-bold tracking-widest uppercase mt-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">Mother Company</span>
+                                </div>
+                            )}
+
                             {/* Company Logo Image - Original Colors */}
                             <img 
                                 src={company.logo} 
                                 alt={company.name} 
                                 loading="lazy"
                                 decoding="async"
-                                className="w-[120px] h-[50px] object-contain drop-shadow-md" 
+                                className={`${isMother ? 'w-[160px] h-[70px]' : 'w-[120px] h-[50px]'} object-contain drop-shadow-md transition-all duration-300`} 
                             />
                         </div>
                     </div>
