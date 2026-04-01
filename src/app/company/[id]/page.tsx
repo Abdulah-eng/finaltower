@@ -9,6 +9,7 @@ export default function CompanyPage() {
     const router = useRouter();
     const [company, setCompany] = useState<any>(null);
     const [isLeaving, setIsLeaving] = useState(false);
+    const [bgImage, setBgImage] = useState('/logos/oldroom.jpg');
 
     const handleBack = () => {
         setIsLeaving(true);
@@ -18,6 +19,18 @@ export default function CompanyPage() {
     };
 
     useEffect(() => {
+        // List of available background images
+        const BACKGROUNDS = [
+            '/logos/backgroundimage.jpg',
+            '/logos/backgroundimage2.jpg',
+            '/logos/backgroundimage3.webp',
+            '/logos/backgroundimage4.jpeg'
+        ];
+        
+        // Select a random background on mount (client-side only to avoid hydration mismatch)
+        const randomBg = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)];
+        setBgImage(randomBg);
+
         if (params.id) {
             const data = getCompanyById(params.id as string);
             if (data) {
@@ -40,9 +53,9 @@ export default function CompanyPage() {
             <div className="fixed inset-0 z-0 overflow-hidden bg-black">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                    src="/logos/oldroom.jpg"
+                    src={bgImage}
                     alt="Background"
-                    className="w-full h-full object-cover object-bottom"
+                    className="w-full h-full object-cover object-bottom transition-opacity duration-1000"
                     style={{ imageRendering: 'auto' }}
                 />
                 {/* Dramatic cinematic overlays matching reference contrast */}

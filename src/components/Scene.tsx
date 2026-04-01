@@ -1,9 +1,9 @@
 'use client';
 
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Stars, Environment } from '@react-three/drei';
+import { Cloud, Clouds, PerspectiveCamera, Stars, Environment } from '@react-three/drei';
 import { Suspense, useState, useEffect, useRef } from 'react';
-import { Vector3 } from 'three';
+import { Vector3, MeshLambertMaterial } from 'three';
 import Tower from './Tower';
 import Loader from './Loader';
 import Onboarding from './Onboarding';
@@ -232,6 +232,11 @@ export default function Scene() {
 
   // Detect ?exit=ID → trigger exit animation (fade from black, camera push outward)
   useEffect(() => {
+    // Also trigger onboarding check on mount
+    if (!localStorage.getItem('hasSeenTowerGuide')) {
+      setShowOnboarding(true);
+    }
+
     const url = new URL(window.location.href);
     const exitId = url.searchParams.get('exit');
     if (exitId) {
@@ -279,13 +284,6 @@ export default function Scene() {
   return (
     <div className="w-full h-screen bg-[#333] relative overflow-hidden">
 
-      {/* Loading Screen Overlay */}
-      <Loader onComplete={() => {
-        if (!localStorage.getItem('hasSeenTowerGuide')) {
-          setShowOnboarding(true);
-        }
-      }} />
-
       {/* Interactive User Guide (Appears on first visit after loading completes) */}
       {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
 
@@ -299,37 +297,33 @@ export default function Scene() {
       {/* Animated Night Sky Background (Behind Canvas) */}
       <div 
         ref={bgRef}
-        className="absolute inset-0 z-0 bg-[#0a0f14] overflow-hidden pointer-events-none"
+        className="absolute inset-0 z-0 bg-slate-400 overflow-hidden pointer-events-none"
       >
-        {/* Layer 1: Dark Base Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#05070a] via-[#0a0f14] to-[#121820]" />
+        {/* Layer 1: Atmospheric Slate Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#64748b] via-[#94a3b8] to-[#cbd5e1]" />
         
-        {/* Layer 2: Moving Clouds (Back) – Lower opacity for premium feel */}
-        <div className="absolute inset-0 bg-clouds-1 opacity-20 mix-blend-screen" />
+        {/* Layer 2: Moving Clouds (Back) */}
+        <div className="absolute inset-0 bg-clouds-1 opacity-60 mix-blend-multiply" />
         
-        {/* Layer 3: Static Procedural Stars Overlay */}
-        <div className="absolute inset-0 bg-stars opacity-40 ml-[-50%] w-[200%]" />
+        {/* Layer 3: Removed Stars Overlay */}
 
         {/* Layer 4: Moving Clouds (Front) */}
-        <div className="absolute inset-0 bg-clouds-2 opacity-15 mix-blend-overlay" />
-        
-        {/* Ambient Glow Pulse */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.04)_0%,transparent_70%)] animate-pulse" />
+        <div className="absolute inset-0 bg-clouds-2 opacity-50 mix-blend-multiply" />
       </div>
 
       <Canvas
         className="z-10 relative"
-        shadows={false} // MEMORY OPT: Shadow pipeline disabled (no mesh casts shadows anyway)
-        dpr={1} // MEMORY OPT: Cap at 1.0 (saves massive framebuffer VRAM compared to 1.5/2.0x)
+        shadows={false} 
+        dpr={[1, 2]} // Support high-resolution screens for significantly smoother edges
         gl={{
-          antialias: false, // MEMORY OPT: Disable MSAA completely (saves massive render target VRAM)
-          alpha: true, // Allow the CSS animated background to show through
-          powerPreference: "default" // Avoid high-performance discrete GPU memory hoarding if not needed
+          antialias: true, // Enable antialiasing for smoother volumetric cloud transitions
+          alpha: true,
+          powerPreference: "high-performance"
         }}
         style={{ touchAction: 'none' }}
       >
-        {/* Fog color matched to the bottom CSS gradient color to blend seamlessly */}
-        <fogExp2 attach="fog" args={['#05070a', 0.003]} />
+        {/* Fog color matched to the atmospheric slate sky color to blend seamlessly */}
+        <fogExp2 attach="fog" args={['#94a3b8', 0.003]} />
 
         <CinematicCamera
           targetPos={cameraTarget}
@@ -341,62 +335,87 @@ export default function Scene() {
           bgRef={bgRef}
         />
 
-        {/* Improved Lighting Setup - High Contrast Premium Look */}
-        {/* Ambient: Darker, moody warm fill */}
-        <ambientLight intensity={0.5} color="#d4c5b0" />
+        {/* Daylight Lighting Setup - Clean and Misty */}
+        <ambientLight intensity={1.2} color="#ffffff" />
 
-        {/* Spot: Sharp Warm Gold Key Light to highly accentuate the architecture */}
         <spotLight
           position={[60, 100, 60]}
           angle={0.4}
           penumbra={1}
-          intensity={3.0}
-          color="#ffedc2"
-          castShadow={false} // MEMORY OPT: Removed shadow map (saves shadow buffer VRAM)
+          intensity={2.0}
+          color="#ffffff"
+          castShadow={false}
         />
 
-        {/* Secondary Lights: Desktop Only */}
+        {/* Secondary Fill Lights */}
         {!isMobile && (
           <>
-            {/* Rim Light: Sharp gold edge light */}
-            <pointLight position={[-60, 40, -60]} intensity={2.0} color="#e0a96d" distance={150} />
-            {/* Fill Light: Soft cinematic warmth to contrast the shadows */}
-            <pointLight position={[50, -20, 50]} intensity={1.0} color="#4a3b2c" distance={150} />
+            <pointLight position={[-60, 40, -60]} intensity={1.5} color="#e2e8f0" distance={150} />
+            <pointLight position={[50, -20, 50]} intensity={1.0} color="#cbd5e1" distance={150} />
           </>
         )}
 
-        {/* Restore Environment for proper PBR material reflection (metal/roughness), but lock resolution low to save VRAM */}
-        <Environment preset="city" blur={0.6} background={false} resolution={256} />
+        {/* Restore Environment using LOCAL asset to prevent 'Failed to fetch' runtime errors */}
+        <Environment files="/potsdamer_platz_1k.hdr" blur={0.6} background={false} resolution={256} />
 
-        {/* 3D Stars for parallax depth overlapping the CSS ambient sky and clouds */}
-        {/* Dynamic count: Heavy star count on desktop, reduced count on mobile for performance */}
-        <Stars 
-          radius={250} 
-          depth={80} 
-          count={isMobile ? 2000 : 5000} // MEMORY OPT: Reduced from 12000 (saves geometry buffer memory)
-          factor={6} 
-          saturation={0} 
-          fade 
-          speed={1.5} 
-        />
+        {/* Volumetric Clouds (Realistic Mixed White/Gray Cloud Blanket) */}
+        <Clouds material={MeshLambertMaterial}>
+          {/* Layer 1: Massive Background Misty Blanket (Pure White for light source) */}
+          <Cloud 
+            segments={isMobile ? 80 : 150} 
+            bounds={[400, 40, 400]} 
+            volume={350} 
+            color="#ffffff" 
+            opacity={0.8} 
+            speed={0.03} // Slowed down for smooth majestic drift
+            position={[0, 40, -180]} 
+          />
+          
+          {/* Layer 2: Mid-range Darker Cloud Masses (Dark Gray) */}
+          <Cloud 
+            segments={isMobile ? 60 : 120} 
+            bounds={[300, 30, 300]} 
+            volume={250} 
+            color="#999999" 
+            opacity={0.7} 
+            speed={0.04} 
+            position={[-50, 60, -80]} 
+          />
+
+          {/* Layer 3: Massive Foreground Misty Drift (Light Gray - Moving in front) */}
+          <Cloud 
+            segments={isMobile ? 100 : 200} 
+            bounds={[300, 50, 300]} 
+            volume={300} 
+            color="#cccccc" 
+            opacity={0.75} 
+            speed={0.1} // Slowed down for smooth majestic drift
+            position={[0, -20, 100]} 
+          />
+        </Clouds>
+
 
         <Suspense fallback={null}>
             <Tower onSelect={handleSelect} onHover={setIsHovered} cameraStateRef={cameraStateRef} isMobile={isMobile} />
         </Suspense>
 
       </Canvas>
-      <div className={`absolute top-0 left-0 p-6 md:p-12 text-white pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
+      <div className={`absolute top-0 left-0 p-6 md:p-12 text-slate-800 pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
         <div className="space-y-1">
-          <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] text-[#d4af37] font-bold">
+          <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] text-[#b48a04] font-bold">
             Corporate Interactive Experience
           </p>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-black tracking-tighter">
-            TOWER<span className="text-[#d4af37]">.</span>
-          </h1>
+          <div className="py-2 animate-fade-in">
+            <img 
+              src="/logos/Arabian Holding Group - Iraq.png" 
+              alt="Arabian Holding Group" 
+              className="h-10 md:h-14 lg:h-16 w-auto object-contain filter grayscale brightness-50 contrast-150 drop-shadow-[0_2px_10px_rgba(0,0,0,0.1)]"
+            />
+          </div>
         </div>
         <div className="mt-4 md:mt-6 flex items-center space-x-4">
-          <div className="h-[1px] w-8 md:w-12 bg-[#d4af37]/50"></div>
-          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-gray-400 font-light">
+          <div className="h-[1px] w-8 md:w-12 bg-slate-400"></div>
+          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500 font-light">
             {isMobile ? 'Tap Company to Enter' : 'Select Company to Enter'}
           </p>
         </div>
