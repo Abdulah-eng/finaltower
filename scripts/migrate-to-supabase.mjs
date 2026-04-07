@@ -1,80 +1,28 @@
-import { Vector3 } from 'three';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
-export interface Company {
-    id: string;
-    name: string;
-    description: string;
-    introduction?: string;
-    fullDescription?: string;
-    logo: string;
-    meshNames: string[];
-    beaconPosition: [number, number, number];
-    doorModel: 'OP1' | 'OP2' | 'OP3' | 'OP4' | 'PWR1' | 'PWR2' | 'PWR3' | 'PWR4' | 'SP1' | 'SP2' | 'SP3' | 'SP4';
-    website?: string;
-    content?: {
-        title?: string;
-        body?: string | string[];
-        list?: string[];
-    }[];
+dotenv.config({ path: '.env.local' });
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase credentials in .env.local');
+  process.exit(1);
 }
 
-export async function fetchCompanies(): Promise<Company[]> {
-    const { data, error } = await supabase
-        .from('companies')
-        .select('*');
-    
-    if (error) {
-        console.error('Error fetching companies:', error.message);
-        return companies; // Fallback to static for now
-    }
-    
-    return data.map((row: any) => ({
-        ...row,
-        meshNames: row.mesh_names,
-        beaconPosition: row.beacon_position,
-        doorModel: row.door_model
-    }));
-}
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export async function fetchCompanyById(id: string): Promise<Company | undefined> {
-    const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', id)
-        .single();
-    
-    if (error) {
-        console.error('Error fetching company:', error.message);
-        return getCompanyById(id); // Fallback to static
-    }
-    
-    return {
-        ...data,
-        meshNames: data.mesh_names,
-        beaconPosition: data.beacon_position,
-        doorModel: data.door_model
-    };
-}
-
-export function getCompanyById(id: string): Company | undefined {
-    return companies.find(c => c.id === id);
-}
-
-export function getCompanyByMesh(meshName: string): Company | undefined {
-    return companies.find(c => c.meshNames.includes(meshName));
-}
-
-export const companies: Company[] = [
+const companies = [
     {
         id: "arabian_holding_group",
         name: "Arabian Holding Group - Iraq",
         description: "A Driver of Development and a Symbol of Trust.",
-        introduction: "Arabian Holding Group is one of Iraq's leading companies, officially registered with the Ministry of Trade. It was established in 2005 in accordance with Article 21 of the Companies Law No. (21) of 1997. The Group operates with strengthened capital, reflecting its financial solidity and its capability to execute major strategic projects across Iraq.\n\nThe Group is guided by a clear vision focused on business development and the creation of effective partnerships across various sectors, with full commitment to professional and legal standards. It enhances client confidence by delivering high-quality services and projects that have a tangible economic and developmental impact.",
+        introduction: "Arabian Holding Group is one of Iraq's leading companies...",
         logo: "/logos/Arabian Holding Group - Iraq.png",
-        meshNames: ["door16"],
-        beaconPosition: [0, 79, 7], // Tower Roof (Adjusted Down)
-        doorModel: "OP1",
+        mesh_names: ["door16"],
+        beacon_position: [0, 79, 7],
+        door_model: "OP1",
         website: "https://arabianholdinggroup.com",
         content: [
             {
@@ -114,11 +62,11 @@ export const companies: Company[] = [
         id: "mawaraa_al_bihar",
         name: "Mawaraa Al-Bihar",
         description: "General Trading & Commercial Agencies Ltd.",
-        introduction: "Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd. is a private Iraqi company officially registered with the Ministry of Trade – Companies Registration Directorate of the Republic of Iraq. The company was established with a capital of IQD 100,000,000 (one hundred million Iraqi dinars), qualifying it to conduct general trading and commercial agency activities at both the local and international levels, in accordance with approved legal and professional frameworks.",
+        introduction: "Mawaraa Al-Bihar General Trading & Commercial Agencies Ltd. is a private Iraqi company officially registered with the Ministry of Trade...",
         logo: "/logos/Mawaraa-Al-Bihar.png",
-        meshNames: ["door21"],
-        beaconPosition: [-25.26, 44, -15.0], // Tier3, angle~260°
-        doorModel: "OP3",
+        mesh_names: ["door21"],
+        beacon_position: [-25.26, 44, -15.0],
+        door_model: "OP3",
         website: "https://mawaraa-albihar.com",
         content: [
             {
@@ -158,11 +106,11 @@ export const companies: Company[] = [
         id: "al_irtikaz",
         name: "Al-Irtikaz Company",
         description: "Integrated artistic production, marketing, and technical solutions.",
-        introduction: "Al-Irtikaz Company is a fully integrated Iraqi commercial entity, officially established under registered documentation with the Iraqi Ministry of Trade – Companies Registration Directorate. The company adopts a multi-dimensional business model that combines artistic production, marketing, publishing, and technical services under one umbrella, delivering integrated solutions to its clients.",
+        introduction: "Al-Irtikaz Company is a fully integrated Iraqi commercial entity...",
         logo: "/logos/Smart-City.png",
-        meshNames: ["door24"],
-        beaconPosition: [12.73, 67, -12.73], // Tier5, angle~135°
-        doorModel: "OP4",
+        mesh_names: ["door24"],
+        beacon_position: [12.73, 67, -12.73],
+        door_model: "OP4",
         website: "https://alirtikaz.com",
         content: [
             {
@@ -200,11 +148,11 @@ export const companies: Company[] = [
         id: "nidaa_al_ard",
         name: "Nidaa Al-Ard Company",
         description: "Leader in modern agricultural investments and genetic research.",
-        introduction: "Nidaa Al-Ard Company is a leading Iraqi entity specializing in agricultural investments, general trading, import and export of agricultural materials and fertilizers, livestock and agricultural wealth investments, advanced agricultural services, trading of agricultural supplies and equipment, as well as the trade of crops, fertilizers, and pesticides.\n\nThe company was founded in 2024 to deliver innovative, high-quality solutions that meet the needs of local and regional markets, while contributing to the development of the agricultural sector on scientific and sustainable foundations. Nidaa Al-Ard believes that innovation, quality, and customer commitment are the core pillars of sustainable success.",
+        introduction: "Nidaa Al-Ard Company is a leading Iraqi entity specializing in agricultural investments...",
         logo: "/logos/Desert-Star.png",
-        meshNames: ["door11"],
-        beaconPosition: [26.6, 54, -4.69], // Tier4, angle~80°
-        doorModel: "PWR1",
+        mesh_names: ["door11"],
+        beacon_position: [26.6, 54, -4.69],
+        door_model: "PWR1",
         website: "https://nidaa-alard.com",
         content: [
             {
@@ -235,11 +183,11 @@ export const companies: Company[] = [
         id: "al_takween",
         name: "Al-Takween",
         description: "Commercial Agencies Company (LLC).",
-        introduction: "Al-Takween Commercial Agencies Company (LLC) was established in accordance with the provisions of the Iraqi Companies Law No. (21) of 1997 and the Commercial Agencies Regulation Law No. (79) of 2017. The official certificate of incorporation was issued on November 1, 2023, with an authorized capital of one hundred million Iraqi dinars, reflecting the company’s seriousness and capacity to implement large-scale and diverse projects within the Iraqi market.",
+        introduction: "Al-Takween Commercial Agencies Company (LLC) was established in accordance with the provisions of the Iraqi Companies Law No. (21) of 1997...",
         logo: "/logos/Al-Takween.png",
-        meshNames: ["door13"],
-        beaconPosition: [29.94, 44, -8.02], // Tier3
-        doorModel: "PWR3",
+        mesh_names: ["door13"],
+        beacon_position: [29.94, 44, -8.02],
+        door_model: "PWR3",
         website: "https://altakween.com",
         content: [
             {
@@ -270,11 +218,11 @@ export const companies: Company[] = [
         id: "al_arabiya_international",
         name: "Al-Arabiya International",
         description: "Innovation and Investment group based in UAE.",
-        introduction: "Al-Arabiya International is a leading company founded in the heart of the United Arab Emirates, embodying the spirit of innovation and entrepreneurship that defines the UAE economy. The company was established with a bold vision to serve as a bridge for commercial and investment excellence between the Arab world and the rest of the globe.",
+        introduction: "Al-Arabiya International is a leading company founded in the heart of the United Arab Emirates...",
         logo: "/logos/Blue-Ocean.png",
-        meshNames: ["door15"],
-        beaconPosition: [-13.37, 54, -23.16], // Tier4
-        doorModel: "PWR4",
+        mesh_names: ["door15"],
+        beacon_position: [-13.37, 54, -23.16],
+        door_model: "PWR4",
         website: "https://alarabiya-international.com",
         content: [
             {
@@ -300,11 +248,11 @@ export const companies: Company[] = [
         id: "al_zawraa",
         name: "Al-Zawraa Company",
         description: "Media and Broadcast conglomerate.",
-        introduction: "Al-Zawraa Company was established in 2005 in Baghdad as a pioneering, full-service media and advertising institution. The company began its journey with a local radio station and expanded over the years to become one of the most prominent media groups in Iraq and the region.",
+        introduction: "Al-Zawraa Company was established in 2005 in Baghdad as a pioneering, full-service media and advertising institution...",
         logo: "/logos/Al-Zawraa.png",
-        meshNames: ["door26"],
-        beaconPosition: [-13.37, 54, 23.16], // Tier4
-        doorModel: "SP1",
+        mesh_names: ["door26"],
+        beacon_position: [-13.37, 54, 23.16],
+        door_model: "SP1",
         website: "https://alzawraa.com",
         content: [
             {
@@ -334,11 +282,11 @@ export const companies: Company[] = [
         id: "al_tawasul",
         name: "Al-Tawasul",
         description: "Economic Services and Strategic Consulting.",
-        introduction: "Al-Tawasul Economic Services Company is a specialized Iraqi economic entity established in 2023 in accordance with the provisions of Article (22) of the Iraqi Companies Law No. (21) of 1997, as amended. The company provides integrated economic and consulting solutions to both the public and private sectors. Al-Tawasul operates within a strict Iraqi legal framework and relies on a team of experts and specialists across various economic disciplines.",
+        introduction: "Al-Tawasul Economic Services Company is a specialized Iraqi economic entity established in 2023...",
         logo: "/logos/Al-Mutamayez.png",
-        meshNames: ["door11"],
-        beaconPosition: [0, 8, 48], // Tier1
-        doorModel: "SP3",
+        mesh_names: ["door11"],
+        beacon_position: [0, 8, 48],
+        door_model: "SP3",
         website: "https://altawasul.com",
         content: [
             {
@@ -368,11 +316,11 @@ export const companies: Company[] = [
         id: "dazly",
         name: "Dazly",
         description: "General Trading & E-Commerce Company.",
-        introduction: "Dazly was established as an ambitious venture aiming to redefine the concept of e-commerce and general trading by combining variety, quality, and an outstanding user experience. We are more than just an online marketplace; we are a trusted partner that meets the needs of individuals and families across all aspects of daily life.",
+        introduction: "Dazly was established as an ambitious venture aiming to redefine the concept of e-commerce and general trading...",
         logo: "/logos/Al-Rayyan.png",
-        meshNames: ["door27"],
-        beaconPosition: [26.87, 27, 26.87], // Tier2
-        doorModel: "SP4",
+        mesh_names: ["door27"],
+        beacon_position: [26.87, 27, 26.87],
+        door_model: "SP4",
         website: "https://dazly.com",
         content: [
             {
@@ -399,11 +347,11 @@ export const companies: Company[] = [
         id: "arkan_al_dar",
         name: "Arkan Al-Dar",
         description: "Marketing and Tourism Investment group.",
-        introduction: "Arkan Al-Dar is a leading multi-activity company providing integrated solutions in commercial marketing, advertising, and tourism investments. Established in 2015, the company was founded with an ambitious vision that blends innovation with tradition, positioning itself as a strategic partner for success in both local and regional markets. The company adopts the philosophy of “The Integrated Pillar,” combining excellence in creative services with smart investment solutions.",
+        introduction: "Arkan Al-Dar is a leading multi-activity company providing integrated solutions in commercial marketing...",
         logo: "/logos/Golden-Sand.png",
-        meshNames: ["door13"],
-        beaconPosition: [0, 8, -48], // Tier1
-        doorModel: "OP1",
+        mesh_names: ["door13"],
+        beacon_position: [0, 8, -48],
+        door_model: "OP1",
         website: "https://arkan-aldar.com",
         content: [
             {
@@ -432,11 +380,11 @@ export const companies: Company[] = [
         id: "ameer_al_middle_east",
         name: "Ameer Al-Middle East",
         description: "Events, Advertising, and Catering specialists.",
-        introduction: "Ameer Al-Middle East Company is a private Iraqi limited liability company specializing in delivering an integrated package of technical, organizational, and logistical services across the fields of events management, marketing, and food services. The company was officially established and obtained its legal license from the relevant Iraqi authorities, positioning itself as a trusted partner in managing major events and occasions, as well as executing marketing and advertising campaigns with high efficiency and professionalism.",
+        introduction: "Ameer Al-Middle East Company is a private Iraqi limited liability company specializing in delivering an integrated package...",
         logo: "/logos/Al-Tafani.png",
-        meshNames: ["door25"],
-        beaconPosition: [-26.87, 27, -26.87], // Tier2
-        doorModel: "OP3",
+        mesh_names: ["door25"],
+        beacon_position: [-26.87, 27, -26.87],
+        door_model: "OP3",
         website: "https://ameer-middleeast.com",
         content: [
             {
@@ -457,11 +405,11 @@ export const companies: Company[] = [
         id: "al_tamaddon",
         name: "Al-Tamaddon Real Estate",
         description: "Urban investment and development (1 Billion IQD Capital).",
-        introduction: "Al-Tamaddon Company for Real Estate Investment and Development is a private Iraqi limited liability company, officially registered with the Ministry of Trade – Companies Registration Department. The company was established with a capital of one billion Iraqi dinars, reflecting its financial strength and firm commitment to actively contributing to the development of the real estate investment sector in Iraq.",
+        introduction: "Al-Tamaddon Company for Real Estate Investment and Development is a private Iraqi limited liability company...",
         logo: "/logos/Al-Jawda.png",
-        meshNames: ["door15"],
-        beaconPosition: [-48, 8, 0], // Tier1
-        doorModel: "OP4",
+        mesh_names: ["door15"],
+        beacon_position: [-48, 8, 0],
+        door_model: "OP4",
         website: "https://altamaddon.com",
         content: [
             {
@@ -483,11 +431,11 @@ export const companies: Company[] = [
         id: "imkanat",
         name: "Imkanat Development",
         description: "Sustainability and Green Transformation pioneer.",
-        introduction: "Imkanat Development Company was established as an ambitious national enterprise aiming to actively contribute to urban, economic, and service-sector development. We do not provide isolated services; rather, we operate as an integrated system that connects all stages of development—from concept to operation and management.\n\nIn the heart of Baghdad, where civilization and history intersect with the challenges of the modern era, Imkanat Development emerges with a revolutionary vision that redefines real estate investment and urban development. Our flagship project, “Sustainable Forests in Baghdad,” stands as a practical declaration of our commitment to building a green and sustainable future for Iraq.",
+        introduction: "Imkanat Development Company was established as an ambitious national enterprise aiming to actively contribute to urban, economic, and service-sector development...",
         logo: "/logos/Imkanat.png",
-        meshNames: ["door14"],
-        beaconPosition: [-17.39, 67, -4.66], // Tier5
-        doorModel: "PWR1",
+        mesh_names: ["door14"],
+        beacon_position: [-17.39, 67, -4.66],
+        door_model: "PWR1",
         website: "https://imkanat.com",
         content: [
             {
@@ -509,11 +457,11 @@ export const companies: Company[] = [
         id: "baghdad_wings",
         name: "Baghdad Wings Airline",
         description: "Iraq's private airline and air cargo service.",
-        introduction: "Baghdad Wings Airline – LLC was established as a private aviation company aiming to provide high-quality commercial aviation and air cargo services, with a strong focus on connecting Iraq with regional and international destinations. We operate with the authentic spirit of Iraq and a modern aviation vision, contributing to rebuilding Iraq’s image as a key logistical and aviation hub in the region.",
+        introduction: "Baghdad Wings Airline – LLC was established as a private aviation company aiming to provide high-quality commercial aviation and air cargo services...",
         logo: "/logos/Baghdad-Wings.png",
-        meshNames: ["door16"],
-        beaconPosition: [10.24, 44, 28.19], // Tier3
-        doorModel: "PWR3",
+        mesh_names: ["door16"],
+        beacon_position: [10.24, 44, 28.19],
+        door_model: "PWR3",
         website: "https://baghdadwings.com",
         content: [
             {
@@ -535,11 +483,11 @@ export const companies: Company[] = [
         id: "inmobiles",
         name: "INMOBILES - FZCO",
         description: "Mobile technology and telecommunications branch.",
-        introduction: "INMOBILES – FZCO is a foreign company registered in the United Arab Emirates and has obtained an official license to establish a branch in the Republic of Iraq pursuant to a decision issued by the Iraqi Ministry of Trade – Companies Registration Department – Foreign Companies Section. This license reflects the company’s commitment to strategic expansion and investment in the Iraqi market, in full compliance with applicable legal and regulatory frameworks.",
+        introduction: "INMOBILES – FZCO is a foreign company registered in the United Arab Emirates and has obtained an official license to establish a branch in the Republic of Iraq...",
         logo: "/logos/INMOBILES - FZCO.png",
-        meshNames: ["door12"],
-        beaconPosition: [48, 8, 0], // Tier1
-        doorModel: "PWR4",
+        mesh_names: ["door12"],
+        beacon_position: [48, 8, 0],
+        door_model: "PWR4",
         website: "https://inmobiles.com",
         content: [
             {
@@ -561,11 +509,11 @@ export const companies: Company[] = [
         id: "iraqi_insurance",
         name: "Iraqi Insurance Union",
         description: "Foundational pillar of Iraq's insurance sector.",
-        introduction: "Iraqi Insurance Union is one of the historic and foundational pillars of Iraq’s insurance sector. Established on principles that combine heritage and modernity, it has become a leading company providing comprehensive insurance solutions that protect individuals, businesses, and assets. We are not just a company selling insurance policies; we are a true partner in your life and success, building a protective shield that preserves your achievements and eases your concerns about the future.",
+        introduction: "Iraqi Insurance Union is one of the historic and foundational pillars of Iraq’s insurance sector...",
         logo: "/logos/Al-Asriya.png",
-        meshNames: ["door22"],
-        beaconPosition: [-26.87, 27, 26.87], // Tier2
-        doorModel: "SP1",
+        mesh_names: ["door22"],
+        beacon_position: [-26.87, 27, 26.87],
+        door_model: "SP1",
         website: "https://iraqiinsurance.com",
         content: [
             {
@@ -587,11 +535,11 @@ export const companies: Company[] = [
         id: "himmati",
         name: "HIMMATI",
         description: "General Trading Company.",
-        introduction: "HIMMATI General Trading Company was founded on a simple yet powerful principle: to be a trustworthy commercial partner dedicated to achieving the ambitions of its clients and partners with seriousness and integrity. The name “HIMMATI” reflects a spirit of commitment and high ambition in every transaction, deal, and business relationship, serving as a bridge between local and global markets, and turning ideas into reality with efficiency and transparency.",
+        introduction: "HIMMATI General Trading Company was founded on a simple yet powerful principle: to be a trustworthy commercial partner...",
         logo: "/logos/Al-Furaat.png",
-        meshNames: ["door23"],
-        beaconPosition: [26.87, 27, -26.87], // Tier2
-        doorModel: "SP3",
+        mesh_names: ["door23"],
+        beacon_position: [26.87, 27, -26.87],
+        door_model: "SP3",
         website: "https://himmati.com",
         content: [
             {
@@ -610,3 +558,37 @@ export const companies: Company[] = [
         ]
     }
 ];
+
+async function migrate() {
+    console.log('Starting migration...');
+    
+    for (const company of companies) {
+        // Map to snake_case for Supabase columns
+        const row = {
+            id: company.id,
+            name: company.name,
+            description: company.description,
+            introduction: company.introduction,
+            logo: company.logo,
+            mesh_names: company.mesh_names,
+            beacon_position: company.beacon_position,
+            door_model: company.door_model,
+            website: company.website,
+            content: company.content
+        };
+
+        const { error } = await supabase
+            .from('companies')
+            .upsert(row, { onConflict: 'id' });
+            
+        if (error) {
+            console.error(`Error migrating company ${company.id}:`, error.message);
+        } else {
+            console.log(`Successfully migrated ${company.id}`);
+        }
+    }
+    
+    console.log('Migration complete.');
+}
+
+migrate();

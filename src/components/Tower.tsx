@@ -4,7 +4,7 @@ import { useGLTF, Octahedron, Html, Sparkles } from '@react-three/drei';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
 import { useFrame } from '@react-three/fiber';
-import { getCompanyByMesh, getCompanyById, companies } from '../data/companies';
+import { getCompanyByMesh, getCompanyById, Company, fetchCompanies } from '../data/companies';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface TowerProps {
@@ -29,13 +29,23 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
     const addedObjects = useRef<any[]>([]);
 
     const [beacons, setBeacons] = useState<{ id: string; position: Vector3; rotation: [number, number, number]; meshName: string; hasVerticalPartner: boolean }[]>([]);
-
+    const [companiesList, setCompaniesList] = useState<Company[]>([]);
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
 
     // Store meshes by company ID for efficient access
     const meshesByCompanyRef = useRef<Record<string, Mesh[]>>({});
+    useEffect(() => {
+        const loadCompanies = async () => {
+            const data = await fetchCompanies();
+            setCompaniesList(data);
+        };
+        loadCompanies();
+    }, []);
+
     // Setup materials, interaction, and hotspots
     useEffect(() => {
+        if (companiesList.length === 0) return;
+
         const companyMeshes: Mesh[] = [];
         const meshesByCompany: Record<string, Mesh[]> = {};
         const newBeacons: { id: string; position: Vector3; rotation: [number, number, number]; meshName: string; hasVerticalPartner: boolean }[] = [];
@@ -118,7 +128,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
         });
 
         // Pass 2: Create Beacons & Virtual Doors for ALL 17 companies based on beaconPosition
-        companies.forEach(company => {
+        companiesList.forEach(company => {
             if (!company.beaconPosition) return;
             
             const pos = new Vector3(company.beaconPosition[0], company.beaconPosition[1], company.beaconPosition[2]);
@@ -170,7 +180,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
             }
         }
 
-    }, [scene, searchParams]);
+    }, [scene, searchParams, companiesList]);
 
     // MEMORY: Cleanup added hotspots & restore hidden meshes when component unmounts
     useEffect(() => {
@@ -237,7 +247,10 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 
         // Check name OR userData for hotspot
         const meshName = e.object.name;
-        const company = getCompanyByMesh(meshName) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
+        const findByMesh = (name: string) => companiesList.find(c => c.meshNames.includes(name));
+        const findById = (id: string) => companiesList.find(c => c.id === id);
+        
+        const company = findByMesh(meshName) || (e.object.userData?.companyId ? findById(e.object.userData.companyId) : null);
 
         if (company) {
             setHoveredMesh(company.id); // Use ID for stability
@@ -267,7 +280,11 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 
     const handleClick = (e: any) => {
         e.stopPropagation();
-        const company = getCompanyByMesh(e.object.name) || (e.object.userData?.companyId ? getCompanyById(e.object.userData.companyId) : null);
+        const meshName = e.object.name;
+        const findByMesh = (name: string) => companiesList.find(c => c.meshNames.includes(name));
+        const findById = (id: string) => companiesList.find(c => c.id === id);
+        
+        const company = findByMesh(meshName) || (e.object.userData?.companyId ? findById(e.object.userData.companyId) : null);
 
         if (!company) return;
 
@@ -300,7 +317,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                     key={`beacon-${beacon.id}`} 
                     position={beacon.position} 
                     rotation={beacon.rotation as [number, number, number]}
-                    companyId={beacon.id} 
+                    company={companiesList.find(c => c.id === beacon.id)!} 
                     meshName={beacon.meshName}
                     hasVerticalPartner={beacon.hasVerticalPartner}
                     isMobile={isMobile} 
@@ -317,7 +334,7 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
                         setHighlight(beacon.id, false);
                     }
                 }} onClick={() => {
-                    const company = getCompanyById(beacon.id);
+                    const company = companiesList.find(c => c.id === beacon.id);
                     if (company) {
                         // All companies now use the exact beacon.position for camera targeting
                         // Since we have Virtual Doors, this ensures the camera stays aligned with the logo
@@ -330,10 +347,10 @@ export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = fa
 }
 
 // Beacon Component for Animation & Context-Aware Labels
-function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, isMobile, onHover, onClick }: { 
+function Beacon({ position, rotation, company, meshName, hasVerticalPartner, isMobile, onHover, onClick }: { 
     position: Vector3, 
     rotation: [number, number, number],
-    companyId: string, 
+    company: Company, 
     meshName: string,
     hasVerticalPartner: boolean,
     isMobile: boolean, 
@@ -349,8 +366,7 @@ function Beacon({ position, rotation, companyId, meshName, hasVerticalPartner, i
     const lastZIndex = useRef<number>(-1);
 
     // Get company name safely
-    const company = getCompanyById(companyId);
-    const isMother = companyId === 'arabian_holding_group';
+    const isMother = company.id === 'arabian_holding_group';
 
     useFrame((state) => {
         if (meshRef.current) {

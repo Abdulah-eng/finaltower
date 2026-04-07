@@ -409,13 +409,13 @@ export default function Scene() {
             <img 
               src="/logos/Arabian Holding Group - Iraq.png" 
               alt="Arabian Holding Group" 
-              className="h-10 md:h-14 lg:h-16 w-auto object-contain filter grayscale brightness-50 contrast-150 drop-shadow-[0_2px_10px_rgba(0,0,0,0.1)]"
+              className="h-10 md:h-14 lg:h-16 w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
             />
           </div>
         </div>
         <div className="mt-4 md:mt-6 flex items-center space-x-4">
           <div className="h-[1px] w-8 md:w-12 bg-slate-400"></div>
-          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500 font-light">
+          <p className="text-[9px] md:text-[11px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-900 font-bold drop-shadow-sm">
             {isMobile ? 'Tap Company to Enter' : 'Select Company to Enter'}
           </p>
         </div>

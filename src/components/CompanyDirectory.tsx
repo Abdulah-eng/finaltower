@@ -1,12 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { companies } from '../data/companies';
+import { fetchCompanies, Company } from '../data/companies';
 
 export default function CompanyDirectory() {
     const [isOpen, setIsOpen] = useState(false);
+    const [companiesList, setCompaniesList] = useState<Company[]>([]);
     const router = useRouter();
+
+    useEffect(() => {
+        const loadCompanies = async () => {
+            const data = await fetchCompanies();
+            setCompaniesList(data);
+        };
+        loadCompanies();
+    }, []);
 
     const handleSelect = (id: string) => {
         setIsOpen(false);
@@ -54,7 +63,7 @@ export default function CompanyDirectory() {
 
                     <div className="flex-1 overflow-y-auto pr-4 -mr-4 custom-scrollbar">
                         <div className="space-y-4 pb-12">
-                            {companies.map((company, index) => (
+                            {companiesList.map((company, index) => (
                                 <div
                                     key={company.id}
                                     onClick={() => handleSelect(company.id)}

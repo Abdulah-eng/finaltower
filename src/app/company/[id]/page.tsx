@@ -1,17 +1,18 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { getCompanyById } from '../../../data/companies';
+import { fetchCompanyById, Company } from '../../../data/companies';
 import { useEffect, useState } from 'react';
 
 export default function CompanyPage() {
     const params = useParams();
     const router = useRouter();
-    const [company, setCompany] = useState<any>(null);
+    const [company, setCompany] = useState<Company | null>(null);
     const [isLeaving, setIsLeaving] = useState(false);
     const [bgImage, setBgImage] = useState('/logos/oldroom.jpg');
 
     const handleBack = () => {
+        if (!company) return;
         setIsLeaving(true);
         setTimeout(() => {
             router.push(`/?exit=${company.id}`);
@@ -32,12 +33,15 @@ export default function CompanyPage() {
         setBgImage(randomBg);
 
         if (params.id) {
-            const data = getCompanyById(params.id as string);
-            if (data) {
-                setCompany(data);
-            } else {
-                router.push('/');
-            }
+            const loadData = async () => {
+                const data = await fetchCompanyById(params.id as string);
+                if (data) {
+                    setCompany(data);
+                } else {
+                    router.push('/');
+                }
+            };
+            loadData();
         }
     }, [params, router]);
 
