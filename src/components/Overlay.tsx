@@ -1,6 +1,7 @@
 'use client';
 
 import { Company } from '../data/companies';
+import { useSettings } from '../lib/SettingsContext';
 
 interface OverlayProps {
     isOpen: boolean;
@@ -9,6 +10,7 @@ interface OverlayProps {
 }
 
 export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
+    const { settings } = useSettings();
     if (!data) return null;
 
     return (
@@ -106,7 +108,7 @@ export default function Overlay({ isOpen, onClose, data }: OverlayProps) {
                 {/* Bottom Bar */}
                 <div className="p-4 md:p-6 border-t border-[#d4af37]/10 flex justify-between items-center bg-black/50">
                     <span className="text-[9px] uppercase tracking-[0.2em] text-gray-600">
-                        © 2024 Tower of Companies
+                        {settings.footer_text}
                     </span>
                     <div className="flex space-x-2">
                         <div className="w-1 h-1 rounded-full bg-[#d4af37]/30"></div>

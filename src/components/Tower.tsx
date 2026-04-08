@@ -6,6 +6,7 @@ import { Mesh, Vector3, MeshStandardMaterial, DoubleSide, Color, PointLight, Box
 import { useFrame } from '@react-three/fiber';
 import { getCompanyByMesh, getCompanyById, Company, fetchCompanies } from '../data/companies';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSettings } from '../lib/SettingsContext';
 
 interface TowerProps {
     onSelect: (name: string, position?: Vector3) => void;
@@ -17,9 +18,10 @@ interface TowerProps {
 export default function Tower({ onSelect, onHover, cameraStateRef, isMobile = false }: TowerProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { settings } = useSettings();
     // MEMORY OPT: Always use colleseum_final.glb — the mobile GLB was actually 37% LARGER
     // (10.76MB vs 7.83MB) so it offered no benefit. One model = less total RAM.
-    const modelPath = '/models/colleseum_final.glb';
+    const modelPath = settings.model_path || '/models/colleseum_final.glb';
     const gltf = useGLTF(modelPath);
     // MEMORY OPTIMIZATION: Use gltf.scene directly instead of cloning (clone doubled all geometry in RAM)
     // We track modifications via refs and clean up on unmount instead.
@@ -520,6 +522,6 @@ function Beacon({ position, rotation, company, meshName, hasVerticalPartner, isM
     );
 }
 
-// Preload the main model
-useGLTF.preload('/models/colleseum_final.glb');
+// We remove static preload to prevent loading default when custom is used.
+// useGLTF.preload('/models/colleseum_final.glb');
 // MEMORY OPT: Door GLBs are loaded on-demand, not preloaded, to reduce peak memory.

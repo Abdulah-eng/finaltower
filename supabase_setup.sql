@@ -60,3 +60,56 @@ CREATE TRIGGER update_companies_updated_at
     BEFORE UPDATE ON companies
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- 6. Create the site_settings table
+CREATE TABLE IF NOT EXISTS public.site_settings (
+    id TEXT PRIMARY KEY,
+    header_title TEXT,
+    header_logo TEXT,
+    footer_text TEXT,
+    model_path TEXT,
+    env_map_path TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. Insert default initial settings
+INSERT INTO public.site_settings (id, header_title, header_logo, footer_text, model_path, env_map_path) 
+VALUES (
+    'main', 
+    'Corporate Interactive Experience', 
+    '/logos/Arabian Holding Group - Iraq.png', 
+    '© 2024 Tower of Companies', 
+    '/models/colleseum_final.glb', 
+    '/potsdamer_platz_1k.hdr'
+) ON CONFLICT (id) DO NOTHING;
+
+-- 8. Enable RLS
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+
+-- 9. Create Policies for Settings
+CREATE POLICY "Allow public read access"
+ON public.site_settings FOR SELECT USING (true);
+
+CREATE POLICY "Allow admin full access"
+ON public.site_settings FOR ALL
+USING (auth.role() = 'authenticated')
+WITH CHECK (auth.role() = 'authenticated');
+
+-- 10. Create bucket for 3D assets and HDR maps
+INSERT INTO storage.buckets (id, name, public, file_size_limit) 
+VALUES ('assets', 'assets', true, 52428800) -- Allow up to 50MB for models
+ON CONFLICT (id) DO NOTHING;
+
+-- 11. Asset bucket policies
+CREATE POLICY "Public Read Access Assets"
+ON storage.objects FOR SELECT USING (bucket_id = 'assets');
+
+CREATE POLICY "Admin CRUD Access Assets"
+ON storage.objects FOR ALL
+USING (bucket_id = 'assets' AND auth.role() = 'authenticated')
+WITH CHECK (bucket_id = 'assets' AND auth.role() = 'authenticated');
+
+CREATE TRIGGER update_settings_updated_at
+    BEFORE UPDATE ON site_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();

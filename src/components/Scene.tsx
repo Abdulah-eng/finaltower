@@ -11,6 +11,7 @@ import CompanyDirectory from './CompanyDirectory';
 
 import { getCompanyByMesh } from '../data/companies';
 import { useRouter } from 'next/navigation';
+import { useSettings } from '../lib/SettingsContext';
 
 // Hook to detect mobile screen
 const useIsMobile = () => {
@@ -206,6 +207,7 @@ function CinematicCamera({
 export default function Scene() {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const { settings } = useSettings();
 
   const [cameraTarget, setCameraTarget] = useState(new Vector3(60, 30, 60));
   const [lookTarget, setLookTarget] = useState(new Vector3(0, 10, 0));
@@ -356,7 +358,11 @@ export default function Scene() {
         )}
 
         {/* Restore Environment using LOCAL asset to prevent 'Failed to fetch' runtime errors */}
-        <Environment files="/potsdamer_platz_1k.hdr" blur={0.6} background={false} resolution={256} />
+        {settings.env_map_path ? (
+          <Environment files={settings.env_map_path} blur={0.6} background={false} resolution={256} />
+        ) : (
+          <Environment files="/potsdamer_platz_1k.hdr" blur={0.6} background={false} resolution={256} />
+        )}
 
         {/* Volumetric Clouds (Realistic Mixed White/Gray Cloud Blanket) */}
         <Clouds material={MeshLambertMaterial}>
@@ -403,14 +409,16 @@ export default function Scene() {
       <div className={`absolute top-0 left-0 p-6 md:p-12 text-slate-800 pointer-events-none z-10 transition-all duration-1000 ${isFocused ? 'opacity-0 blur-sm translate-x-[-20px]' : 'opacity-100'}`}>
         <div className="space-y-1">
           <p className="text-[9px] md:text-[10px] uppercase tracking-[0.4em] md:tracking-[0.5em] text-[#b48a04] font-bold">
-            Corporate Interactive Experience
+            {settings.header_title}
           </p>
           <div className="py-2 animate-fade-in">
-            <img 
-              src="/logos/Arabian Holding Group - Iraq.png" 
-              alt="Arabian Holding Group" 
-              className="h-10 md:h-14 lg:h-16 w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
-            />
+            {settings.header_logo && (
+              <img 
+                src={settings.header_logo} 
+                alt={settings.header_title || "Logo"} 
+                className="h-10 md:h-14 lg:h-16 w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
+              />
+            )}
           </div>
         </div>
         <div className="mt-4 md:mt-6 flex items-center space-x-4">
